@@ -187,32 +187,6 @@
   }
   .auth-card h2{font-size:23px; margin-bottom:4px; letter-spacing:-0.01em;}
   .auth-sub{color:var(--ink-soft); font-size:13.5px; line-height:1.5; margin-bottom:24px;}
-  .auth-field{margin-bottom:14px;}
-  .auth-field label{font-size:11.5px;}
-  .auth-field input{
-    padding:12px 14px; border-radius:11px; border:1.5px solid var(--steel-line);
-    background:var(--paper); transition:border-color .15s, box-shadow .15s, background .15s;
-  }
-  .auth-field input:focus{background:var(--paper-raised);}
-  .auth-row2{display:grid; grid-template-columns:1fr; gap:10px;}
-  .auth-row2.is-signup{grid-template-columns:1fr 1fr;}
-  #authError{
-    background:var(--red-bg); color:var(--red); border-radius:10px;
-    padding:10px 12px; font-size:12.5px; margin:0 0 14px; font-weight:600;
-  }
-  .auth-submit{
-    width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;
-    background:linear-gradient(135deg, var(--amber), var(--amber-dark));
-    color:#241a06; font-weight:700; font-size:14.5px; letter-spacing:0.01em;
-    box-shadow:0 10px 22px rgba(221,154,46,0.32);
-    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-  }
-  .auth-submit:hover{transform:translateY(-1px); box-shadow:0 14px 28px rgba(221,154,46,0.4);}
-  .auth-submit:active{transform:translateY(0);}
-  .auth-submit:disabled{opacity:0.6; cursor:default; transform:none;}
-  .auth-switch{text-align:center; font-size:13px; color:var(--ink-soft); margin:20px 0 0;}
-  .auth-switch a{color:var(--amber-dark); font-weight:700; text-decoration:none;}
-  .auth-switch a:hover{text-decoration:underline;}
   .auth-lock-note{
     display:flex; align-items:center; gap:8px; margin-top:22px; padding-top:18px;
     border-top:1px solid var(--steel-line); font-size:11.5px; color:var(--ink-soft);
@@ -307,7 +281,8 @@
     <p class="note-muted" id="pinOverlayText">Enter the owner PIN to continue.</p>
     <div class="field" style="margin-top:12px;">
       <label for="pinInput">PIN</label>
-      <input id="pinInput" type="password" inputmode="numeric" placeholder="••••" />
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="••••"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();Overlay.submit();} if(event.key==='Escape')Overlay.close();" />
     </div>
     <div class="btn-row">
       <button class="btn btn-amber" style="flex:1" onclick="Overlay.submit()">Confirm</button>
@@ -477,7 +452,7 @@
   <div class="dash-top">
     <div class="brand">
       <h1>Ledger</h1>
-      <span>Rider KM & Payout Tracker</span>
+      <span>Rider KM &amp; Payout Tracker</span>
     </div>
   </div>
   <div class="odometer-row">
@@ -507,7 +482,7 @@
   <button class="menu-item" onclick="Menu.open('weeklyModal')">Weekly Report</button>
   <button class="menu-item" onclick="Menu.open('monthlyModal')">Monthly Summary</button>
   <button class="menu-item" onclick="Reports.openRiderReport()">Rider Report</button>
-  <button class="menu-item" onclick="Menu.open('backupModal')">Backup & Restore</button>
+  <button class="menu-item" onclick="Menu.open('backupModal')">Backup &amp; Restore</button>
   <button class="menu-item" onclick="Menu.open('auditModal')">Audit Log</button>
   <div class="menu-divider"></div>
   <button class="menu-item" id="accountEmailLabel" style="color:var(--ink-soft); font-weight:600; cursor:default;" onclick="event.stopPropagation()"></button>
@@ -597,83 +572,10 @@ const fbDb = firebase.firestore();
 // The user stays signed in until they explicitly log out.
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
+/* This page has no login form of its own — sign in happens in the main
+   Operations Panel and Firebase shares that session. So this module only
+   needs to react to the session and offer log out. */
 const Auth = (() => {
-  let mode = 'signin'; // 'signin' | 'signup'
-
-  function toggleMode(){
-    mode = mode === 'signin' ? 'signup' : 'signin';
-    const isSignup = mode === 'signup';
-    document.getElementById('authTitle').textContent = isSignup ? 'Create your account' : 'Welcome back';
-    document.getElementById('authSub').textContent = isSignup
-      ? 'Set up your own private rider ledger in a few seconds.'
-      : 'Sign in to access your own rider ledger. Your data is private to your account.';
-    document.getElementById('authSubmitBtn').textContent = isSignup ? 'Create Account' : 'Sign In';
-    document.getElementById('authToggleText').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
-    document.getElementById('authToggleLink').textContent = isSignup ? 'Sign in' : 'Create one';
-    document.getElementById('authNameField').classList.toggle('hidden', !isSignup);
-    document.getElementById('authConfirmField').classList.toggle('hidden', !isSignup);
-    document.getElementById('authRow2').classList.toggle('is-signup', isSignup);
-    document.getElementById('authName').value = '';
-    document.getElementById('authConfirmPassword').value = '';
-    hideError();
-  }
-
-  function showError(msg){
-    const el = document.getElementById('authError');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-  function hideError(){
-    document.getElementById('authError').style.display = 'none';
-  }
-
-  async function submit(){
-    const name = document.getElementById('authName').value.trim();
-    const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
-    const confirmPassword = document.getElementById('authConfirmPassword').value;
-    hideError();
-
-    if(!email || !password) return showError('Enter both email and password.');
-    if(password.length < 6) return showError('Password must be at least 6 characters.');
-
-    if(mode === 'signup'){
-      if(!name) return showError('Enter your full name.');
-      if(password !== confirmPassword) return showError('Passwords do not match.');
-    }
-
-    const btn = document.getElementById('authSubmitBtn');
-    btn.disabled = true;
-    const originalLabel = btn.textContent;
-    btn.textContent = mode === 'signin' ? 'Signing in…' : 'Creating account…';
-    try{
-      if(mode === 'signin'){
-        await fbAuth.signInWithEmailAndPassword(email, password);
-      } else {
-        const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
-        await cred.user.updateProfile({ displayName: name });
-      }
-    }catch(e){
-      showError(friendlyError(e));
-      btn.textContent = originalLabel;
-    }finally{
-      btn.disabled = false;
-    }
-  }
-
-  function friendlyError(e){
-    const map = {
-      'auth/invalid-email': 'That email address looks invalid.',
-      'auth/user-not-found': 'No account found with that email.',
-      'auth/wrong-password': 'Incorrect password.',
-      'auth/invalid-credential': 'Incorrect email or password.',
-      'auth/email-already-in-use': 'An account already exists with that email.',
-      'auth/weak-password': 'Password must be at least 6 characters.',
-      'auth/too-many-requests': 'Too many attempts. Please wait and try again.'
-    };
-    return map[e.code] || 'Something went wrong. Please try again.';
-  }
-
   async function logout(){
     if(!confirm('Log out of your account?')) return;
     await fbAuth.signOut();
@@ -693,7 +595,7 @@ const Auth = (() => {
     }
   });
 
-  return { submit, toggleMode, logout };
+  return { logout };
 })();
 
 /* ============================================================
@@ -783,9 +685,13 @@ const PinSystem = (() => {
     if(p1 !== p2) return alert('PINs do not match.');
     if(p1.length < 4) return alert('Use at least 4 characters.');
 
+    // Capture this BEFORE the PIN is written, otherwise the audit line
+    // would always read "PIN changed" — even the very first time one is set.
+    const existed = hasPin();
+
     const proceed = async () => {
       DataStore.state.pin = p1;
-      DataStore.log(hasPin() ? 'PIN changed' : 'PIN created');
+      DataStore.log(existed ? 'PIN changed' : 'PIN created');
       await DataStore.persist();
       document.getElementById('newPin').value = '';
       document.getElementById('confirmPin').value = '';
@@ -793,7 +699,7 @@ const PinSystem = (() => {
       alert('PIN saved.');
     };
 
-    if(hasPin() && !unlocked){
+    if(existed && !unlocked){
       require(proceed, 'Enter current PIN to change it.');
     } else {
       await proceed();
@@ -836,8 +742,10 @@ const PinSystem = (() => {
     document.querySelectorAll('.session-unlock-btn').forEach(b => b.disabled = unlocked);
     document.querySelectorAll('.session-lock-btn').forEach(b => b.disabled = !unlocked);
     const tag = document.getElementById('sessionTag');
-    tag.textContent = unlocked ? 'Unlocked' : 'Locked';
-    tag.className = 'tag ' + (unlocked ? 'open' : 'locked');
+    if(tag){
+      tag.textContent = unlocked ? 'Unlocked' : 'Locked';
+      tag.className = 'tag ' + (unlocked ? 'open' : 'locked');
+    }
   }
 
   return { require, change, unlock, lock, updateSessionUI, get unlocked(){ return unlocked; } };
@@ -870,11 +778,13 @@ const Overlay = (() => {
     onSubmit = null;
   }
 
-  return { open, submit, close };
+  function isOpen(){ return !document.getElementById('pinOverlay').classList.contains('hidden'); }
+
+  return { open, submit, close, isOpen };
 })();
 
 /* ============================================================
-   MENU (permanent right-side panel; collapses to a bottom
+   MENU (permanent left-side panel; collapses to a bottom
    drawer on narrow screens, toggled by the floating button)
    ============================================================ */
 const Menu = (() => {
@@ -899,6 +809,17 @@ const Menu = (() => {
     const el = panel();
     const toggleBtn = document.querySelector('.menu-toggle-mobile');
     if(el && !el.contains(e.target) && toggleBtn && !toggleBtn.contains(e.target)) closeDropdown();
+  });
+
+  // Escape closes whatever is on top: the PIN prompt first, then any
+  // open report/settings modal.
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Escape') return;
+    if(Overlay.isOpen()){ Overlay.close(); return; }
+    const openModal = [...document.querySelectorAll('.overlay')]
+      .filter(m => m.id !== 'pinOverlay' && !m.classList.contains('hidden')).pop();
+    if(openModal) openModal.classList.add('hidden');
+    else closeDropdown();
   });
 
   return { toggle, open, close, action };
@@ -1013,8 +934,13 @@ function downloadFile(filename, content, type){
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoking immediately can cancel the download in some browsers —
+  // give it a moment to start first.
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function formatDateLong(d){
@@ -1057,16 +983,23 @@ function buildPrintable(title, subtitle, headers, rows, statChips){
 }
 
 async function elementToCanvas(node){
-  const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2 });
-  document.body.removeChild(node);
-  return canvas;
+  try{
+    return await html2canvas(node, { backgroundColor: '#ffffff', scale: 2 });
+  } finally {
+    // Always clear the off-screen node, even if the capture throws —
+    // otherwise a failed export would leave invisible junk in the DOM
+    // that piles up with every retry.
+    if(node.parentNode) node.parentNode.removeChild(node);
+  }
 }
 
 function downloadCanvasAsJPG(canvas, filename){
   const a = document.createElement('a');
   a.download = filename;
   a.href = canvas.toDataURL('image/jpeg', 0.95);
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
 }
 
 function downloadCanvasAsPDF(canvas, filename){
@@ -1096,12 +1029,19 @@ function downloadCanvasAsPDF(canvas, filename){
 async function exportVisual(title, subtitle, headers, rows, baseFilename, format, statChips){
   if(typeof html2canvas === 'undefined' || (format === 'pdf' && !(window.jspdf && window.jspdf.jsPDF))){
     alert('Could not load the PDF/JPG export library — check your internet connection and try again.');
-    return;
+    return false;
   }
   const node = buildPrintable(title, subtitle, headers, rows, statChips);
-  const canvas = await elementToCanvas(node);
-  if(format === 'jpg') downloadCanvasAsJPG(canvas, baseFilename + '.jpg');
-  else downloadCanvasAsPDF(canvas, baseFilename + '.pdf');
+  try{
+    const canvas = await elementToCanvas(node);
+    if(format === 'jpg') downloadCanvasAsJPG(canvas, baseFilename + '.jpg');
+    else downloadCanvasAsPDF(canvas, baseFilename + '.pdf');
+    return true;
+  }catch(e){
+    console.error('Export failed', e);
+    alert('Could not generate the file. Please try again.');
+    return false;
+  }
 }
 
 /* ============================================================
@@ -1250,6 +1190,9 @@ const Entries = (() => {
 
     if(!riderId) return alert('Add a rider first.');
     if(!date) return alert('Select a date.');
+    // Guard against a blank/garbled number field silently becoming NaN
+    // and poisoning every total from here on.
+    if([km, rate, paid].some(v => Number.isNaN(v))) return alert('KM, Rate and Paid must be valid numbers.');
     if(km < 0 || rate < 0 || paid < 0) return alert('Negative values are not allowed.');
 
     const total = km * rate;
@@ -1295,6 +1238,10 @@ const Entries = (() => {
     PinSystem.require(async () => {
       if(!confirm('Delete this entry?')) return;
       const e = DataStore.state.entries.find(x => x.id === entryId);
+      // If the entry currently loaded into the form is the one being
+      // deleted, clear the form — otherwise "Update Entry" would try to
+      // save a row that no longer exists.
+      if(editingId === entryId) resetForm();
       DataStore.state.entries = DataStore.state.entries.filter(x => x.id !== entryId);
       DataStore.log('Deleted entry: ' + (e ? e.date : entryId));
       await DataStore.persist();
@@ -1416,6 +1363,15 @@ const Reports = (() => {
     return keepAllRiders ? rows : rows.filter(r => r.km || r.total || r.paid || r.pending);
   }
 
+  /* Only the riders who actually have an entry in this period.
+     Presence of an entry is the test — not whether the numbers add up to
+     something non-zero — so a rider with a genuine 0.00 KM entry still
+     appears, while riders with no entry at all are left out entirely. */
+  function summarizeActive(entries){
+    const active = new Set(entries.map(e => e.riderId));
+    return summarize(entries, true).filter(r => active.has(r.id));
+  }
+
   function summaryTableHtml(rows, totalPendingMap){
     if(!rows.length) return `<tr class="empty-row"><td colspan="6">No data.</td></tr>`;
     return rows.map(r => `<tr>
@@ -1437,24 +1393,23 @@ const Reports = (() => {
     const weekStart = startOfWeek(new Date());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6); weekEnd.setHours(23,59,59,999);
     const weekly = DataStore.state.entries.filter(e => { const d = parseLocalDate(e.date); return d >= weekStart && d <= weekEnd; });
-    document.getElementById('weeklyRows').innerHTML = summaryTableHtml(summarize(weekly), riderPendingAsOf(isoDateStr(weekEnd)));
+    document.getElementById('weeklyRows').innerHTML = summaryTableHtml(summarizeActive(weekly), riderPendingAsOf(isoDateStr(weekEnd)));
 
     const day = document.getElementById('reportDay').value || todayISO();
     const dailyRiderId = document.getElementById('dailyRiderSelect').value;
     const daily = DataStore.state.entries
       .filter(e => e.date === day)
       .filter(e => !dailyRiderId || e.riderId === dailyRiderId);
-    // Build the full per-rider table first (so zero-activity riders show as
-    // zero rows when viewing "All Riders"), then narrow to just the selected
-    // rider when one is picked — matching what the CSV/PDF/JPG export already
-    // does, so the on-screen table and the exported file always agree.
-    let dailyRows = summarize(daily, dailyRiderId ? true : daily.length > 0);
+    // Only riders who actually worked on this date — riders with no entry
+    // for the day are no longer listed as empty 0.00 rows. Same rule the
+    // CSV/PDF/JPG export uses, so screen and file always agree.
+    let dailyRows = summarizeActive(daily);
     if(dailyRiderId) dailyRows = dailyRows.filter(r => r.id === dailyRiderId);
     document.getElementById('dailyRows').innerHTML = summaryTableHtml(dailyRows, riderPendingAsOf(day));
 
     const month = document.getElementById('reportMonth').value;
     const monthly = DataStore.state.entries.filter(e => !month || e.date.startsWith(month));
-    document.getElementById('monthlyRows').innerHTML = summaryTableHtml(summarize(monthly), riderPendingAsOf(monthEndDate(month)));
+    document.getElementById('monthlyRows').innerHTML = summaryTableHtml(summarizeActive(monthly), riderPendingAsOf(monthEndDate(month)));
   }
 
   function populateRiderSelect(){
@@ -1549,11 +1504,11 @@ const Reports = (() => {
       .filter(e => e.date === day)
       .filter(e => !dailyRiderId || e.riderId === dailyRiderId);
     if(!daily.length) return alert('No entries found for this date' + (dailyRiderId ? ' for this rider.' : '.'));
-    let rows = summarize(daily, true);
+    let rows = summarizeActive(daily);
     if(dailyRiderId) rows = rows.filter(r => r.id === dailyRiderId);
     const totalPendingMap = riderPendingAsOf(day);
     const riderSuffix = dailyRiderId ? '-' + (riderMap()[dailyRiderId]||'rider').trim().toLowerCase().replace(/\s+/g,'-') : '';
-    const subtitle = `Date: ${formatDateLong(new Date(day + 'T00:00:00'))}` + (dailyRiderId ? ` · ${riderMap()[dailyRiderId]||''}` : '');
+    const subtitle = `Date: ${formatDateLong(parseLocalDate(day))}` + (dailyRiderId ? ` · ${riderMap()[dailyRiderId]||''}` : '');
 
     if(format === 'csv'){
       downloadFile(`daily-fuel-cost-report-${day}${riderSuffix}.csv`, toCsv([
@@ -1561,9 +1516,10 @@ const Reports = (() => {
         ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      await exportVisual('Daily Fuel Cost Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
+      const ok = await exportVisual('Daily Fuel Cost Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
         rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `daily-fuel-cost-report-${day}${riderSuffix}`, format);
+      if(!ok) return;
     }
     DataStore.log(`Generated daily fuel cost report — ${day} (${format.toUpperCase()})`);
     await DataStore.persist();
@@ -1574,7 +1530,8 @@ const Reports = (() => {
     const weekStart = startOfWeek(new Date());
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6); weekEnd.setHours(23,59,59,999);
     const weekly = DataStore.state.entries.filter(e => { const d = parseLocalDate(e.date); return d >= weekStart && d <= weekEnd; });
-    const rows = summarize(weekly);
+    if(!weekly.length) return alert('No entries found for this week.');
+    const rows = summarizeActive(weekly);
     const totalPendingMap = riderPendingAsOf(isoDateStr(weekEnd));
     const subtitle = `Week of ${formatDateLong(weekStart)} – ${formatDateLong(weekEnd)}`;
 
@@ -1584,9 +1541,10 @@ const Reports = (() => {
         ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      await exportVisual('Weekly Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
+      const ok = await exportVisual('Weekly Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
         rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `weekly-report-${todayISO()}`, format);
+      if(!ok) return;
     }
     DataStore.log(`Generated weekly report (${format.toUpperCase()})`);
     await DataStore.persist();
@@ -1596,7 +1554,8 @@ const Reports = (() => {
   async function exportMonthly(format){
     const month = document.getElementById('reportMonth').value;
     const monthly = DataStore.state.entries.filter(e => !month || e.date.startsWith(month));
-    const rows = summarize(monthly);
+    if(!monthly.length) return alert('No entries found for this month.');
+    const rows = summarizeActive(monthly);
     const totalPendingMap = riderPendingAsOf(monthEndDate(month));
     const subtitle = month ? `Month of ${month}` : 'All time';
 
@@ -1606,9 +1565,10 @@ const Reports = (() => {
         ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      await exportVisual('Monthly Summary', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
+      const ok = await exportVisual('Monthly Summary', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
         rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `monthly-report-${month || 'all'}`, format);
+      if(!ok) return;
     }
     DataStore.log(`Generated monthly report${month ? ' — ' + month : ''} (${format.toUpperCase()})`);
     await DataStore.persist();
@@ -1650,10 +1610,11 @@ const Reports = (() => {
         { label:'Paid', value: money(sum('paid')) },
         { label:'Pending', value: money(pendingDisplay) }
       ];
-      await exportVisual(`Rider Report — ${name}`, `${rangeSubtitle} · Generated ${formatDateLong(new Date())}`,
+      const ok = await exportVisual(`Rider Report — ${name}`, `${rangeSubtitle} · Generated ${formatDateLong(new Date())}`,
         ['Date','KM','Total','Paid','Pending','Balance','Status','Note'],
         entries.map(e => [e.date, money(e.km), money(e.total), money(e.paid), money(e.pending), money(balance[e.id] ?? 0), entryStatus(e), e.note||'']),
         `rider-report-${slug}-${rangeLabel}`, format, statChips);
+      if(!ok) return;
     }
     DataStore.log(`Generated rider report — ${name} (${format.toUpperCase()})`);
     await DataStore.persist();
@@ -1677,7 +1638,10 @@ function auditRows(){
    ============================================================ */
 const Backup = (() => {
   async function exportJSON(){
-    downloadFile(`ledger-backup-${todayISO()}.json`, JSON.stringify(DataStore.state, null, 2), 'application/json');
+    // Never write the owner PIN into a file that gets shared or stored
+    // on a shared machine.
+    const { pin, ...safeState } = DataStore.state;
+    downloadFile(`ledger-backup-${todayISO()}.json`, JSON.stringify(safeState, null, 2), 'application/json');
     DataStore.log('Exported JSON backup');
     await DataStore.persist();
     auditRows();
@@ -1708,11 +1672,13 @@ const Backup = (() => {
         if(!Array.isArray(imported.riders) || !Array.isArray(imported.entries)){
           alert('Invalid backup file.'); return;
         }
+        if(!confirm('Restoring replaces all current riders and entries. Continue?')) return;
         DataStore.state.riders = imported.riders;
         DataStore.state.entries = imported.entries;
         DataStore.state.auditLogs = Array.isArray(imported.auditLogs) ? imported.auditLogs : [];
         DataStore.log('Imported backup file');
         await DataStore.persist();
+        Entries.resetForm(); // an in-progress edit may point at an entry that no longer exists
         App.renderAll();
         alert('Backup imported successfully.');
       }catch(err){ alert('Could not read that file.'); }
