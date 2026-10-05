@@ -4,559 +4,178 @@ let paymentMailHTML = '';
 let paymentMailText = '';
 let paymentSubject = '';
 
+const HUB_NAME = 'Moulvibazar-Barlekha Hub';
+const COLLECTION_DAY_OFFSET = 1; // collection date = payment date minus N days (0 hole same din)
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 
 /* =========================================================
-   PAYMENT MAIL
+   PARSE PAYMENT MESSAGE
 ========================================================= */
 
 function parsePaymentMessage(text){
 
-  const result={
-
-    amount:'',
-    time:'',
-    date:'',
-    trx:''
-
-  };
-
-
-  /* =====================================================
-     AMOUNT
-
-     Supports:
-
-     Your Pay Bill request of Tk 34338.0
-
-     Amount: Tk 34338
-
-     Amount Tk 34338
-  ===================================================== */
+  const result = { amount:'', time:'', date:'', trx:'' };
 
   let match =
-    text.match(
-      /Pay\s+Bill\s+request\s+of\s+Tk\s*([\d,]+(?:\.\d+)?)/i
-    );
+    text.match(/Pay\s+Bill\s+request\s+of\s+Tk\s*([\d,]+(?:\.\d+)?)/i) ||
+    text.match(/Amount\s*[:\-]?\s*(?:Tk\s*)?([\d,]+(?:\.\d+)?)/i);
 
+  if(match) result.amount = match[1].replace(/,/g,'');
 
-  if(!match){
+  match = text.match(/TrxID\s*[:\-]?\s*([A-Z0-9]+)/i);
+  if(match) result.trx = match[1];
 
-    match =
-      text.match(
-        /Amount\s*[:\-]?\s*(?:Tk\s*)?([\d,]+(?:\.\d+)?)/i
-      );
-
-  }
-
-
-  if(!match){
-
-    match =
-      text.match(
-        /Amount\s*[:\-]?\s*Tk\s*([\d,]+(?:\.\d+)?)/i
-      );
-
-  }
-
-
-  if(match){
-
-    result.amount =
-      match[1]
-      .replace(/,/g,'');
-
-  }
-
-
-  /* =====================================================
-     TRANSACTION ID
-  ===================================================== */
-
-  match =
-    text.match(
-      /TrxID\s*[:\-]?\s*([A-Z0-9]+)/i
-    );
-
-
-  if(match){
-
-    result.trx =
-      match[1];
-
-  }
-
-
-  /* =====================================================
-     DATE + TIME
-
-     Example:
-
-     processed at 10/08/26 07:35PM
-  ===================================================== */
-
-  match =
-    text.match(
-      /at\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))/i
-    );
-
-
-  if(match){
-
-    result.date =
-      match[1];
-
-
-    result.time =
-      match[2]
-      .replace(/\s+/g,'');
-
-  }
-
-
-  return result;
-
-}
-
-
-function formatMoney(value){
-
-  const n =
-    Number(value||0);
-
-
-  if(Number.isNaN(n))
-    return value;
-
-
-  return n.toLocaleString(
-    'en-US',
-    {
-      maximumFractionDigits:0
-    }
+  match = text.match(
+    /at\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))/i
   );
 
+  if(match){
+    result.date = match[1];
+    result.time = match[2].replace(/\s+/g,'');
+  }
+
+  return result;
 }
 
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function formatMoney(value){
+  const n = Number(value || 0);
+  if(Number.isNaN(n)) return value;
+  return n.toLocaleString('en-US', { maximumFractionDigits:0 });
+}
+
+// payment message er date (dd/mm/yy) -> Date object. Na pele aajker date.
+function parsePaymentDate(str){
+
+  if(str){
+    const p = str.split('/');
+    if(p.length === 3){
+      let year = parseInt(p[2], 10);
+      if(year < 100) year += 2000;
+      const d = new Date(year, parseInt(p[1],10) - 1, parseInt(p[0],10));
+      if(!Number.isNaN(d.getTime())) return d;
+    }
+  }
+
+  return new Date();
+}
+
+// 01 September 2026
+function formatCollectionDate(d){
+  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+
+/* =========================================================
+   TABLE BUILDER (Gmail er jonno inline style)
+========================================================= */
+
+const CELL   = 'border:1px solid #ccc;padding:5px 8px;';
+const HEAD   = 'border:1px solid #999;padding:5px 8px;background:#f2f2f2;';
+
+function tr(label, value, bold){
+  const b = bold ? 'font-weight:bold;' : '';
+  return `
+<tr>
+<td style="${CELL}${b}">${label}</td>
+<td style="${CELL}text-align:center;${b}">${value}</td>
+</tr>`;
+}
+
+function th(left, right){
+  return `
+<tr>
+<th style="${HEAD}text-align:left;">${left}</th>
+<th style="${HEAD}">${right}</th>
+</tr>`;
+}
+
+
+/* =========================================================
+   GENERATE MAIL
+========================================================= */
 
 function generatePaymentMail(){
 
-  const input =
-    document
-    .getElementById(
-      'paymentMessage'
-    )
-    .value
-    .trim();
-
+  const input = document.getElementById('paymentMessage').value.trim();
 
   if(!input){
-
-    alert(
-      'Paste your payment message first.'
-    );
-
+    alert('Paste your payment message first.');
     return;
-
   }
 
+  const data = parsePaymentMessage(input);
 
-  const data =
-    parsePaymentMessage(input);
-
-
-  if(
-    !data.amount ||
-    !data.trx
-  ){
-
-    alert(
-      'Payment amount or Transaction ID could not be detected.'
-    );
-
+  if(!data.amount || !data.trx){
+    alert('Payment amount or Transaction ID could not be detected.');
     return;
-
   }
 
+  const payDate = parsePaymentDate(data.date);
 
-  let readableDate='';
+  const collectionDate = new Date(payDate);
+  collectionDate.setDate(collectionDate.getDate() - COLLECTION_DAY_OFFSET);
 
+  const collectionLong = formatCollectionDate(collectionDate);
+  const monthYear = `${MONTHS[payDate.getMonth()]} ${payDate.getFullYear()}`;
 
-  if(data.date){
-
-    const parts =
-      data.date.split('/');
-
-
-    if(parts.length===3){
-
-      let year =
-        parseInt(
-          parts[2],
-          10
-        );
-
-
-      year =
-        year<50
-        ?2000+year
-        :1900+year;
-
-
-      readableDate =
-        `${year}-${pad(parts[1])}-${pad(parts[0])}`;
-
-    }
-
-  }
-
-
-  if(!readableDate){
-
-    const now =
-      new Date();
-
-
-    readableDate =
-      `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-
-  }
-
-
-  const longDate =
-    formatDateLong(
-      readableDate
-    );
-
-
-  const amount =
-    formatMoney(
-      data.amount
-    );
-
-
-  const time =
-    data.time || '';
-
-
-  const method =
-    'Bkash';
-
+  const amount = formatMoney(data.amount);
+  const time = data.time || '';
+  const method = 'Bkash';
 
   paymentSubject =
-    `Daily Collection Payment - ${longDate}`;
-
+    `Daily COD Collection & Payment Submission \u2013 ${HUB_NAME} (${monthYear})`;
 
   paymentMailHTML = `
+<div style="font-family:Arial,sans-serif;font-size:13px;color:#111;line-height:1.6">
 
-<div style="
-font-family:Arial,sans-serif;
-font-size:13px;
-color:#111;
-line-height:1.6
-">
+<p style="margin:0 0 12px 0"><b>Dear Team,</b><br>
+This is to inform you that the COD collection for <b>${collectionLong}</b> has been closed and the collected amount has been submitted accordingly.</p>
 
-<p>Dear Concern,</p>
-
-<p>
-I hope you are doing well.
-</p>
-
-<p>
-Today ${longDate} I handed over the collected amounts for the following summary:
-</p>
-
-<p>
-Collection Summary Date:
-<b>${longDate}</b>
-</p>
-
-<table style="
-border-collapse:collapse;
-width:350px;
-font-family:Arial,sans-serif;
-font-size:13px;
-">
+<table style="border-collapse:collapse;width:350px;font-family:Arial,sans-serif;font-size:13px;">
 
 <tr>
-
-<th style="
-border:1px solid #999;
-padding:5px 8px;
-text-align:left;
-background:#f2f2f2
-">
-Particulars
-</th>
-
-<th style="
-border:1px solid #999;
-padding:5px 8px;
-background:#f2f2f2
-">
-Amount (Tk)
-</th>
-
+<td colspan="2" style="${HEAD}text-align:center;font-weight:bold;padding:8px;">Collection Summary</td>
 </tr>
-
+${th('Particulars','Amount (Tk)')}
+${tr('Total COD Collected', amount)}
+${tr('Add: Due Amount', '0')}
+${tr('Less: Other Cost', '0')}
+${tr('Less: Cash in Hand', '0')}
+${tr('Petty Cash Withdraw', '0', true)}
+${tr('Total Payable', amount, true)}
 
 <tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Sum Collected
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-${amount}
-</td>
-
+<td colspan="2" style="${CELL}text-align:center;padding:8px;">Payment Details</td>
 </tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Add: Due Amount
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-0
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Less: Other Cost
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-0
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Less: Cash in Hand
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-0
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-font-weight:bold
-">
-Petty Cash Withdraw
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-0
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-font-weight:bold
-">
-Total Payable
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center;
-font-weight:bold
-">
-${amount}
-</td>
-
-</tr>
-
-
-<tr>
-
-<td colspan="2"
-style="
-border:1px solid #ccc;
-padding:6px;
-text-align:center;
-font-weight:bold;
-">
-Payment Details
-</td>
-
-</tr>
-
-
-<tr>
-
-<th style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:left;
-background:#f2f2f2
-">
-Description
-</th>
-
-<th style="
-border:1px solid #ccc;
-padding:5px 8px;
-background:#f2f2f2
-">
-Information
-</th>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Amount Submitted
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-${amount}
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Payment Method
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-${method}
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-font-weight:bold
-">
-Transaction ID
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-${data.trx}
-</td>
-
-</tr>
-
-
-<tr>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px
-">
-Submission Time
-</td>
-
-<td style="
-border:1px solid #ccc;
-padding:5px 8px;
-text-align:center
-">
-${time}
-</td>
-
-</tr>
+${th('Description','Information')}
+${tr('Amount Submitted', amount)}
+${tr('Payment Method', method)}
+${tr('Transaction ID', data.trx, true)}
+${tr('Submission Time', time)}
 
 </table>
 
-</div>
+<p style="margin:12px 0 0 0">The above amount has been submitted successfully against the day's COD collection.</p>
 
+<p style="margin:12px 0 0 0">Please find the payment details above for your reference and record.</p>
+
+</div>
 `;
 
-
   paymentMailText =
-`Dear Concern,
+`Dear Team,
+This is to inform you that the COD collection for ${collectionLong} has been closed and the collected amount has been submitted accordingly.
 
-I hope you are doing well.
-
-Yesterday ${longDate} I handed over the collected amounts for the following summary:
-
-Collection Summary Date: ${longDate}
-
+Collection Summary
 Particulars\tAmount (Tk)
-Sum Collected\t${amount}
+Total COD Collected\t${amount}
 Add: Due Amount\t0
 Less: Other Cost\t0
 Less: Cash in Hand\t0
@@ -566,35 +185,21 @@ Total Payable\t${amount}
 Payment Details
 Description\tInformation
 Amount Submitted\t${amount}
-Payment Method\tBkash
+Payment Method\t${method}
 Transaction ID\t${data.trx}
-Submission Time\t${time}`;
+Submission Time\t${time}
 
+The above amount has been submitted successfully against the day's COD collection.
 
-  document.getElementById(
-    'paymentPreview'
-  ).innerHTML = `
+Please find the payment details above for your reference and record.`;
 
-    <div class="subject-preview">
-      ${paymentSubject}
-    </div>
-
+  document.getElementById('paymentPreview').innerHTML = `
+    <div class="subject-preview">${paymentSubject}</div>
     ${paymentMailHTML}
-
   `;
 
-
-  document.getElementById(
-    'openPaymentGmail'
-  ).style.display =
-    'inline-block';
-
-
-  document.getElementById(
-    'copyPaymentBtn'
-  ).style.display =
-    'inline-block';
-
+  document.getElementById('openPaymentGmail').style.display = 'inline-block';
+  document.getElementById('copyPaymentBtn').style.display = 'inline-block';
 }
 
 
@@ -605,109 +210,47 @@ Submission Time\t${time}`;
 async function openPaymentGmail(){
 
   await copyRichHTML(
-
     paymentMailHTML,
-
     paymentMailText,
-
-    document.getElementById(
-      'copyPaymentBtn'
-    )
-
+    document.getElementById('copyPaymentBtn')
   );
-
 
   const url =
     'https://mail.google.com/mail/u/0/?view=cm' +
     '&fs=1' +
-    '&su=' +
-    encodeURIComponent(
-      paymentSubject
-    );
+    '&su=' + encodeURIComponent(paymentSubject);
 
-
-  window.open(
-    url,
-    '_blank'
-  );
-
+  window.open(url, '_blank');
 }
 
+
 /* =========================================================
-   PAYMENT EVENTS
+   EVENTS
 ========================================================= */
 
-document
-.getElementById(
-  'generatePaymentBtn'
-)
-.addEventListener(
-  'click',
-  generatePaymentMail
-);
+document.getElementById('generatePaymentBtn')
+  .addEventListener('click', generatePaymentMail);
 
+document.getElementById('clearPaymentBtn')
+  .addEventListener('click', () => {
 
-document
-.getElementById(
-  'clearPaymentBtn'
-)
-.addEventListener(
-  'click',
-  ()=>{
+    document.getElementById('paymentMessage').value = '';
 
-    document.getElementById(
-      'paymentMessage'
-    ).value='';
-
-
-    document.getElementById(
-      'paymentPreview'
-    ).innerHTML =
+    document.getElementById('paymentPreview').innerHTML =
       '<span style="color:#98a2b3">Preview will appear here</span>';
 
+    document.getElementById('openPaymentGmail').style.display = 'none';
+    document.getElementById('copyPaymentBtn').style.display = 'none';
+  });
 
-    document.getElementById(
-      'openPaymentGmail'
-    ).style.display='none';
+document.getElementById('openPaymentGmail')
+  .addEventListener('click', openPaymentGmail);
 
-
-    document.getElementById(
-      'copyPaymentBtn'
-    ).style.display='none';
-
-  }
-);
-
-
-document
-.getElementById(
-  'openPaymentGmail'
-)
-.addEventListener(
-  'click',
-  openPaymentGmail
-);
-
-
-document
-.getElementById(
-  'copyPaymentBtn'
-)
-.addEventListener(
-  'click',
-  ()=>{
-
+document.getElementById('copyPaymentBtn')
+  .addEventListener('click', () => {
     copyRichHTML(
-
       paymentMailHTML,
-
       paymentMailText,
-
-      document.getElementById(
-        'copyPaymentBtn'
-      )
-
+      document.getElementById('copyPaymentBtn')
     );
-
-  }
-);
+  });
