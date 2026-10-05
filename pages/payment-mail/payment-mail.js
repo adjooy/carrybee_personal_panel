@@ -5,7 +5,7 @@ let paymentMailText = '';
 let paymentSubject = '';
 
 const HUB_NAME = 'Moulvibazar-Barlekha Hub';
-const COLLECTION_DAY_OFFSET = 1; // collection date = payment date minus N days (0 hole same din)
+const COLLECTION_DAY_OFFSET = 0; // collection date = payment date minus N days (0 hole same din)
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
