@@ -458,7 +458,7 @@
   <div class="odometer-row">
     <div class="odo"><div class="lbl">Total KM</div><div class="val num" id="statKm">0.00</div></div>
     <div class="odo"><div class="lbl">Total Amount</div><div class="val amber num" id="statAmount">0.00</div></div>
-    <div class="odo"><div class="lbl">Total Paid</div><div class="val green num" id="statPaid">0.00</div></div>
+    <div class="odo"><div class="lbl">Net Paid</div><div class="val green num" id="statPaid">0.00</div></div>
     <div class="odo"><div class="lbl">Pending</div><div class="val red num" id="statPending">0.00</div></div>
     <div class="odo"><div class="lbl">This Month KM</div><div class="val num" id="statMonthKm">0.00</div></div>
     <div class="odo"><div class="lbl">This Month Amount</div><div class="val amber num" id="statMonthAmount">0.00</div></div>
@@ -500,8 +500,8 @@
         <div class="field"><label for="entryRider">Rider</label><select id="entryRider" onchange="Entries.preview()"></select></div>
       </div>
       <div class="row2">
-        <div class="field"><label for="entryType">Entry type</label><select id="entryType" onchange="Entries.preview()"><option value="ride">Ride / KM</option><option value="refund">রাইডার টাকা ফেরত দিয়েছে</option><option value="payment">রাইডারকে টাকা দেওয়া / অগ্রিম</option><option value="credit">অন্য পাওনা যোগ করুন</option><option value="deduction">পাওনা কমান / কর্তন</option></select></div>
-        <div class="field hidden" id="adjustmentField"><label for="entryAmount">Amount (টাকা)</label><input id="entryAmount" type="number" min="0.01" step="0.01" oninput="Entries.preview()"></div>
+        <div class="field"><label for="entryType">Entry type</label><select id="entryType" onchange="Entries.preview()"><option value="ride">Ride / KM</option><option value="refund">Money returned by rider</option><option value="payment">Payment to rider / advance</option><option value="credit">Add other earnings / credit</option><option value="deduction">Deduct from balance</option></select></div>
+        <div class="field hidden" id="adjustmentField"><label for="entryAmount">Amount (BDT)</label><input id="entryAmount" type="number" min="0.01" step="0.01" oninput="Entries.preview()"></div>
       </div>
       <div class="row3" id="rideFields">
         <div class="field"><label for="entryKm">KM</label><input id="entryKm" type="number" min="0" step="0.01" placeholder="0.00" oninput="Entries.preview()" /></div>
@@ -595,6 +595,8 @@ const Auth = (() => {
       await DataStore.load();
       PinSystem.resetSession();
     } else {
+      DataStore.stop();
+      PinSystem.resetSession();
       document.getElementById('appRoot').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
     }
@@ -610,8 +612,40 @@ const DataStore = (() => {
   const MAX_LOGS = 100;
   let state = { riders: [], entries: [], auditLogs: [], pin: '' };
   let ready = false, committed = null, cloudBaseline = null;
+  let unsubscribe = null, generation = 0, savingCount = 0;
   const clone = x => JSON.parse(JSON.stringify(x));
   const ledgerOnly = x => ({riders:x.riders || [], entries:x.entries || [], auditLogs:x.auditLogs || [], pin:x.pin || ''});
+
+  // Firestore may return map fields in a different order. Compare values, not JSON key order.
+  function canonical(value){
+    if(Array.isArray(value)) return value.map(canonical);
+    if(value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])]));
+    return value;
+  }
+  const same = (a,b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  function stop(){
+    generation++;
+    if(unsubscribe){ unsubscribe(); unsubscribe = null; }
+    ready = false;
+    committed = null;
+    cloudBaseline = null;
+    state = {riders:[], entries:[], auditLogs:[], pin:''};
+  }
+  function watch(ref, token){
+    if(typeof ref.onSnapshot !== 'function') return;
+    unsubscribe = ref.onSnapshot(snap => {
+      if(token !== generation || !ready || savingCount || !committed || !same(state, committed)) return;
+      if(snap.metadata && (snap.metadata.hasPendingWrites || snap.metadata.fromCache)) return;
+      const next = ledgerOnly(snap.exists ? snap.data() : {});
+      if(same(next, cloudBaseline)) return;
+      const pinChanged = next.pin !== state.pin;
+      state = clone(next);
+      committed = clone(next);
+      cloudBaseline = clone(next);
+      if(pinChanged) PinSystem.resetSession();
+      App.renderAll();
+    }, error => { console.error('Live update failed', error); });
+  }
 
   function docRef(){
     const user = fbAuth.currentUser;
@@ -624,6 +658,8 @@ const DataStore = (() => {
   }
 
   async function load(){
+    stop();
+    const token = generation;
     ready = false;
     committed = null;
     state = {riders:[], entries:[], auditLogs:[], pin:''};
@@ -631,6 +667,7 @@ const DataStore = (() => {
       const ref = docRef();
       if(!ref){ return; }
       const snap = await ref.get();
+      if(token !== generation) return;
       if(snap.exists){
         const parsed = snap.data();
         cloudBaseline = clone(ledgerOnly(parsed));
@@ -648,6 +685,7 @@ const DataStore = (() => {
       }
       committed = clone(state);
       ready = true;
+      watch(ref, token);
     }catch(e){
       console.error('Load failed', e);
       alert('Could not load your data from the cloud. Check your internet connection and reload.');
@@ -656,6 +694,8 @@ const DataStore = (() => {
   }
 
   async function persist(){
+    savingCount++;
+    const token = generation;
     try{
       const ref = docRef();
       if(!ref || !ready) throw Error('Data is not loaded. Reload before saving.');
@@ -663,18 +703,20 @@ const DataStore = (() => {
       await fbDb.runTransaction(async tx => {
         const current = await tx.get(ref);
         const remote = ledgerOnly(current.exists ? current.data() : {});
-        if(JSON.stringify(remote) !== JSON.stringify(baseline)) throw Error('Data changed in another tab/device. Reload before saving; your form has been kept.');
+        if(!same(remote, baseline)) throw Error('Data changed in another tab/device. Reload before saving; your form has been kept.');
         tx.set(ref, snapshot, {merge:true});
       });
+      if(token !== generation) return;
       cloudBaseline = clone(ledgerOnly(snapshot));
       committed = clone(snapshot);
     }catch(e){
+      if(token !== generation) throw e;
       if(committed) state = clone(committed);
       console.error('Save failed', e);
       alert(e.message || 'Could not save. Your form has been kept.');
       App.renderAll();
       throw e;
-    }
+    }finally { savingCount--; }
   }
 
   function log(action){
@@ -696,7 +738,7 @@ const DataStore = (() => {
     }, 'Enter PIN to delete all data.');
   }
 
-  return { get state(){ return state; }, load, persist, log, id, clearAll };
+  return { get state(){ return state; }, load, persist, log, id, clearAll, stop };
 })();
 
 /* ============================================================
@@ -1240,7 +1282,7 @@ const Entries = (() => {
     document.getElementById('prevPending').textContent = money(pending);
     document.getElementById('prevTotalPending').textContent = money(totalPending);
     document.getElementById('prevTotalPending').title = totalPending < 0 ? 'Rider owes money back' : 'Money owed to rider';
-    document.getElementById('prevStatus').textContent = status;
+    document.getElementById('prevStatus').textContent = entryKinds[status] || status.charAt(0).toUpperCase() + status.slice(1);
   }
 
   let saving = false;
@@ -1762,6 +1804,7 @@ const App = {
     Entries.render();
     Dashboard.render();
     Reports.render();
+    Reports.renderRiderReport();
     auditRows();
     Entries.preview();
     PinSystem.updateSessionUI();
