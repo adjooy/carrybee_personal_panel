@@ -348,7 +348,7 @@
       <button class="btn-sm btn-amber" onclick="Reports.exportDaily('jpg')">JPG</button>
     </div>
     <div class="table-scroll" style="max-height:min(60vh, 460px);">
-      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="dailyRows"></tbody></table>
+      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Adjustment</th><th>Net Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="dailyRows"></tbody></table>
     </div>
   </div>
 </div>
@@ -365,7 +365,7 @@
       <button class="btn-sm btn-amber" onclick="Reports.exportWeekly('jpg')">JPG</button>
     </div>
     <div class="table-scroll" style="max-height:min(65vh, 500px);">
-      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="weeklyRows"></tbody></table>
+      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Adjustment</th><th>Net Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="weeklyRows"></tbody></table>
     </div>
   </div>
 </div>
@@ -383,7 +383,7 @@
       <button class="btn-sm btn-amber" onclick="Reports.exportMonthly('jpg')">JPG</button>
     </div>
     <div class="table-scroll" style="max-height:min(60vh, 460px);">
-      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="monthlyRows"></tbody></table>
+      <table><thead><tr><th>Rider</th><th>KM</th><th>Total</th><th>Adjustment</th><th>Net Paid</th><th>Pending</th><th>Total Pending</th></tr></thead><tbody id="monthlyRows"></tbody></table>
     </div>
   </div>
 </div>
@@ -416,7 +416,7 @@
       <div class="odo"><div class="lbl">Pending</div><div class="val red num" id="rrPending">0.00</div></div>
     </div>
     <div class="table-scroll" style="max-height:min(55vh, 420px);">
-      <table><thead><tr><th>Date</th><th>KM</th><th>Total</th><th>Paid</th><th>Pending</th><th>Balance</th><th>Status</th></tr></thead><tbody id="riderReportRows"></tbody></table>
+      <table><thead><tr><th>Date</th><th>KM</th><th>Total</th><th>Adjustment</th><th>Net Paid</th><th>Pending</th><th>Balance</th><th>Status</th></tr></thead><tbody id="riderReportRows"></tbody></table>
     </div>
   </div>
 </div>
@@ -499,7 +499,11 @@
         <div class="field"><label for="entryDate">Date</label><input id="entryDate" type="date" onchange="Entries.preview()" /></div>
         <div class="field"><label for="entryRider">Rider</label><select id="entryRider" onchange="Entries.preview()"></select></div>
       </div>
-      <div class="row3">
+      <div class="row2">
+        <div class="field"><label for="entryType">Entry type</label><select id="entryType" onchange="Entries.preview()"><option value="ride">Ride / KM</option><option value="refund">রাইডার টাকা ফেরত দিয়েছে</option><option value="payment">রাইডারকে টাকা দেওয়া / অগ্রিম</option><option value="credit">অন্য পাওনা যোগ করুন</option><option value="deduction">পাওনা কমান / কর্তন</option></select></div>
+        <div class="field hidden" id="adjustmentField"><label for="entryAmount">Amount (টাকা)</label><input id="entryAmount" type="number" min="0.01" step="0.01" oninput="Entries.preview()"></div>
+      </div>
+      <div class="row3" id="rideFields">
         <div class="field"><label for="entryKm">KM</label><input id="entryKm" type="number" min="0" step="0.01" placeholder="0.00" oninput="Entries.preview()" /></div>
         <div class="field"><label for="entryRate">Rate / KM</label><input id="entryRate" type="number" min="0" step="0.01" value="3.5" oninput="Entries.preview()" /></div>
         <div class="field"><label for="entryPaid">Paid Amount</label><input id="entryPaid" type="number" min="0" step="0.01" value="0" oninput="Entries.preview()" /></div>
@@ -515,7 +519,7 @@
         <button class="btn btn-amber" id="entrySaveBtn" onclick="Entries.save()">Save Entry</button>
         <button class="btn-outline" onclick="Entries.resetForm()">Reset</button>
       </div>
-      <p class="note-muted">Total = KM × Rate. Pending = Total − Paid. Editing or deleting an entry requires owner PIN unlock.</p>
+      <p class="note-muted">Balance = KM earnings + other credits − deductions − net paid. Positive: rider is owed money. Negative: rider owes money back. Refund increases balance and reduces net paid; it never adds KM. Adjustment entries require a reason. Edit/delete requires owner PIN.</p>
     </div>
 
     <!-- Entries table -->
@@ -531,14 +535,14 @@
         <div class="field">
           <label for="fStatus">Status</label>
           <select id="fStatus" onchange="Entries.render()">
-            <option value="">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option>
+            <option value="">All</option><option value="refund">Refund</option><option value="payment">Payment</option><option value="credit">Credit</option><option value="deduction">Deduction</option><option value="overpaid">Overpaid</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option>
           </select>
         </div>
         <div class="field"><label>&nbsp;</label><button class="btn-outline btn-block" onclick="Entries.clearFilters()">Clear</button></div>
       </div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Date</th><th>Rider</th><th>KM</th><th>Total</th><th>Paid</th><th>Pending</th><th>Total Pending</th><th>Status</th><th>Note</th><th></th></tr></thead>
+          <thead><tr><th>Date</th><th>Rider</th><th>KM</th><th>Total</th><th>Adjustment</th><th>Net Paid</th><th>Pending</th><th>Total Pending</th><th>Status</th><th>Note</th><th></th></tr></thead>
           <tbody id="entryRows"></tbody>
         </table>
       </div>
@@ -589,6 +593,7 @@ const Auth = (() => {
       const label = document.getElementById('accountEmailLabel');
       if(label) label.textContent = user.displayName ? `${user.displayName} · ${user.email}` : user.email;
       await DataStore.load();
+      PinSystem.resetSession();
     } else {
       document.getElementById('appRoot').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
@@ -604,6 +609,9 @@ const Auth = (() => {
 const DataStore = (() => {
   const MAX_LOGS = 100;
   let state = { riders: [], entries: [], auditLogs: [], pin: '' };
+  let ready = false, committed = null, cloudBaseline = null;
+  const clone = x => JSON.parse(JSON.stringify(x));
+  const ledgerOnly = x => ({riders:x.riders || [], entries:x.entries || [], auditLogs:x.auditLogs || [], pin:x.pin || ''});
 
   function docRef(){
     const user = fbAuth.currentUser;
@@ -616,12 +624,16 @@ const DataStore = (() => {
   }
 
   async function load(){
+    ready = false;
+    committed = null;
+    state = {riders:[], entries:[], auditLogs:[], pin:''};
     try{
       const ref = docRef();
       if(!ref){ return; }
       const snap = await ref.get();
       if(snap.exists){
         const parsed = snap.data();
+        cloudBaseline = clone(ledgerOnly(parsed));
         state = {
           riders: Array.isArray(parsed.riders) ? parsed.riders : defaultRiders(),
           entries: Array.isArray(parsed.entries) ? parsed.entries : [],
@@ -630,8 +642,12 @@ const DataStore = (() => {
         };
       } else {
         state = { riders: defaultRiders(), entries: [], auditLogs: [], pin: '' };
+        cloudBaseline = {riders:[], entries:[], auditLogs:[], pin:''};
+        ready = true;
         await persist();
       }
+      committed = clone(state);
+      ready = true;
     }catch(e){
       console.error('Load failed', e);
       alert('Could not load your data from the cloud. Check your internet connection and reload.');
@@ -642,10 +658,23 @@ const DataStore = (() => {
   async function persist(){
     try{
       const ref = docRef();
-      if(!ref) return;
-      await ref.set(state);
+      if(!ref || !ready) throw Error('Data is not loaded. Reload before saving.');
+      const snapshot = clone(state), baseline = clone(cloudBaseline);
+      await fbDb.runTransaction(async tx => {
+        const current = await tx.get(ref);
+        const remote = ledgerOnly(current.exists ? current.data() : {});
+        if(JSON.stringify(remote) !== JSON.stringify(baseline)) throw Error('Data changed in another tab/device. Reload before saving; your form has been kept.');
+        tx.set(ref, snapshot, {merge:true});
+      });
+      cloudBaseline = clone(ledgerOnly(snapshot));
+      committed = clone(snapshot);
+    }catch(e){
+      if(committed) state = clone(committed);
+      console.error('Save failed', e);
+      alert(e.message || 'Could not save. Your form has been kept.');
+      App.renderAll();
+      throw e;
     }
-    catch(e){ console.error('Save failed', e); alert('Could not save to the cloud — check your internet connection.'); }
   }
 
   function log(action){
@@ -748,7 +777,8 @@ const PinSystem = (() => {
     }
   }
 
-  return { require, change, unlock, lock, updateSessionUI, get unlocked(){ return unlocked; } };
+  function resetSession(){ unlocked = false; updateSessionUI(); }
+  return { resetSession, require, change, unlock, lock, updateSessionUI, get unlocked(){ return unlocked; } };
 })();
 
 /* ============================================================
@@ -840,13 +870,47 @@ const parseLocalDate = dateStr => { const [y,m,d] = String(dateStr).split('-').m
    protection is that this line is baked directly into every exported PDF/JPG
    image as pixels, so it survives even if this HTML file itself is edited. */
 const CREDIT_B64 = 'UmlkZXIgS00gVHJhY2tlciDigJQgRGV2ZWxvcGVkIGJ5IEFEIEpveSAg4oCiICBhZGpveS5tZUBnbWFpbC5jb20gIOKAoiAgSW5zdGFncmFtOiBAYWRqb3kubWU=';
-function creditLine(){ try{ return atob(CREDIT_B64); }catch(e){ return 'Developed by AD Joy'; } }
+function creditLine(){ try{ return new TextDecoder().decode(Uint8Array.from(atob(CREDIT_B64), c => c.charCodeAt(0))); }catch(e){ return 'Developed by AD Joy'; } }
+
+const roundMoney = v => Math.round((Number(v) + Number.EPSILON) * 100) / 100;
+const entryKinds = {ride:'Ride', refund:'Refund', payment:'Payment / advance', credit:'Other credit', deduction:'Deduction'};
+function formValues(){
+  const type = document.getElementById('entryType').value;
+  const adjustment = type !== 'ride';
+  document.getElementById('rideFields').classList.toggle('hidden', adjustment);
+  document.getElementById('adjustmentField').classList.toggle('hidden', !adjustment);
+  const km = adjustment ? 0 : Number(document.getElementById('entryKm').value);
+  const rate = adjustment ? 0 : Number(document.getElementById('entryRate').value);
+  const amount = Number(document.getElementById('entryAmount').value);
+  const paid = adjustment ? (type === 'refund' ? -amount : type === 'payment' ? amount : 0) : Number(document.getElementById('entryPaid').value);
+  const credit = type === 'credit' ? amount : type === 'deduction' ? -amount : 0;
+  const total = roundMoney(km * rate);
+  return {type, km, rate, amount, paid:roundMoney(paid), adjustment:credit, total, pending:roundMoney(total + credit - paid)};
+}
+function validateBackup(data){
+  if(!Array.isArray(data.riders) || !Array.isArray(data.entries)) throw Error('Invalid backup');
+  const riders = new Set(), ids = new Set();
+  data.riders.forEach(r => {
+    if(!r || typeof r.id !== 'string' || !/^[\w-]+$/.test(r.id) || riders.has(r.id) || typeof r.name !== 'string' || !r.name.trim()) throw Error('Invalid/duplicate rider');
+    riders.add(r.id);
+  });
+  data.entries.forEach(e => {
+    if(!e || !/^[\w-]+$/.test(e.id) || ids.has(e.id) || !riders.has(e.riderId) || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || isoDateStr(parseLocalDate(e.date)) !== e.date) throw Error('Invalid entry');
+    ids.add(e.id);
+    const type = e.type || 'ride';
+    if(!entryKinds[type] || ['km','rate','total','paid','pending'].some(k => typeof e[k] !== 'number' || !Number.isFinite(e[k])) || e.km < 0 || e.rate < 0) throw Error('Invalid amounts');
+    const adj = e.adjustment || 0;
+    if(!Number.isFinite(adj) || Math.abs(e.total - roundMoney(e.km*e.rate)) > 0.011 || Math.abs(e.pending-roundMoney(e.total+adj-e.paid)) > 0.011) throw Error('Inconsistent amounts');
+    if(type === 'ride' && (e.paid < 0 || adj !== 0)) throw Error('Invalid ride');
+    if(type !== 'ride' && (e.km !== 0 || e.rate !== 0 || e.total !== 0 || !e.note || (type === 'refund' && (e.paid >= 0 || adj !== 0)) || (type === 'payment' && (e.paid <= 0 || adj !== 0)) || (type === 'credit' && (adj <= 0 || e.paid !== 0)) || (type === 'deduction' && (adj >= 0 || e.paid !== 0)))) throw Error('Invalid adjustment');
+  });
+}
 
 function riderMap(){ return Object.fromEntries(DataStore.state.riders.map(r => [r.id, r.name])); }
 
 function riderPendingMap(){
   const map = {};
-  DataStore.state.entries.forEach(e => { map[e.riderId] = (map[e.riderId] || 0) + Number(e.pending || 0); });
+  DataStore.state.entries.forEach(e => { map[e.riderId] = roundMoney((map[e.riderId] || 0) + Number(e.pending || 0)); });
   return map;
 }
 
@@ -881,7 +945,7 @@ function riderRunningTotals(entries){
     });
     let running = 0;
     list.forEach(e => {
-      running += Number(e.pending || 0);
+      running = roundMoney(running + Number(e.pending || 0));
       balance[e.id] = running;
     });
     sorted[riderId] = list;
@@ -907,14 +971,16 @@ function riderPendingAsOf(day, excludeId){
 }
 
 function entryStatus(e){
+  if(e.type && e.type !== 'ride') return e.type;
   const total = Number(e.total||0), paid = Number(e.paid||0);
+  if(paid > total) return 'overpaid';
   if(paid >= total && paid > 0) return 'paid';
   if(total <= 0) return paid > 0 ? 'paid' : 'unpaid';
   if(paid > 0) return 'partial';
   return 'unpaid';
 }
 function statusBadge(s){
-  return `<span class="badge ${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</span>`;
+  return `<span class="badge ${s}">${esc(entryKinds[s] || s.charAt(0).toUpperCase()+s.slice(1))}</span>`;
 }
 
 function renderRows(tbodyId, rows, colspan, rowHtmlFn, emptyText){
@@ -927,7 +993,7 @@ function renderRows(tbodyId, rows, colspan, rowHtmlFn, emptyText){
 }
 
 function toCsv(rows){
-  return rows.map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  return '\uFEFF' + rows.map(r => r.map(v => { const text = typeof v === 'string' && /^[=+@-]/.test(v) ? "'" + v : String(v??''); return `"${text.replace(/"/g,'""')}"`; }).join(',')).join('\n');
 }
 
 function downloadFile(filename, content, type){
@@ -1080,6 +1146,7 @@ const Riders = (() => {
   }
 
   async function saveEdit(riderId){
+    if(!PinSystem.unlocked) return PinSystem.require(() => saveEdit(riderId), 'Enter PIN to rename rider.');
     const input = document.getElementById('riderEditInput_' + riderId);
     const name = input.value.trim();
     if(!name) return alert('Enter a rider name.');
@@ -1162,13 +1229,8 @@ const Entries = (() => {
   function preview(){
     const riderId = document.getElementById('entryRider').value;
     const date = document.getElementById('entryDate').value || todayISO();
-    const km = parseFloat(document.getElementById('entryKm').value || 0);
-    const rate = parseFloat(document.getElementById('entryRate').value || 0);
-    const paid = parseFloat(document.getElementById('entryPaid').value || 0);
-    const total = km * rate, pending = total - paid;
-    let status = 'Unpaid';
-    if(total > 0 && paid >= total) status = 'Paid';
-    else if(paid > 0) status = 'Partial';
+    const {total, pending, paid, type} = formValues();
+    const status = entryStatus({total, paid, type});
 
     const asOfMap = riderId ? riderPendingAsOf(date, editingId) : {};
     const baseline = asOfMap[riderId] || 0;
@@ -1177,43 +1239,40 @@ const Entries = (() => {
     document.getElementById('prevTotal').textContent = money(total);
     document.getElementById('prevPending').textContent = money(pending);
     document.getElementById('prevTotalPending').textContent = money(totalPending);
+    document.getElementById('prevTotalPending').title = totalPending < 0 ? 'Rider owes money back' : 'Money owed to rider';
     document.getElementById('prevStatus').textContent = status;
   }
 
+  let saving = false;
   async function save(){
+    if(saving) return;
+    if(editingId && !PinSystem.unlocked) return PinSystem.require(save, 'Enter PIN to update this entry.');
     const riderId = document.getElementById('entryRider').value;
     const date = document.getElementById('entryDate').value;
-    const km = parseFloat(document.getElementById('entryKm').value || 0);
-    const rate = parseFloat(document.getElementById('entryRate').value || 0);
-    const paid = parseFloat(document.getElementById('entryPaid').value || 0);
+    const values = formValues();
+    const {type, km, rate, paid, total, pending, amount} = values;
     const note = document.getElementById('entryNote').value.trim();
-
-    if(!riderId) return alert('Add a rider first.');
-    if(!date) return alert('Select a date.');
-    // Guard against a blank/garbled number field silently becoming NaN
-    // and poisoning every total from here on.
-    if([km, rate, paid].some(v => Number.isNaN(v))) return alert('KM, Rate and Paid must be valid numbers.');
-    if(km < 0 || rate < 0 || paid < 0) return alert('Negative values are not allowed.');
-
-    const total = km * rate;
-    if(paid > total && !confirm('Paid amount is more than the total. Continue?')) return;
-
-    const pending = total - paid;
-    const name = riderMap()[riderId] || riderId;
-
-    if(editingId){
-      const idx = DataStore.state.entries.findIndex(e => e.id === editingId);
-      if(idx !== -1){
-        DataStore.state.entries[idx] = { ...DataStore.state.entries[idx], riderId, date, km, rate, total, paid, pending, note };
-        DataStore.log(`Edited entry — ${name} on ${date}`);
-      }
-    } else {
-      DataStore.state.entries.push({ id: DataStore.id('entry'), riderId, date, km, rate, total, paid, pending, note, createdAt: new Date().toISOString() });
-      DataStore.log(`Added entry — ${name} on ${date}`);
-    }
-    await DataStore.persist();
-    resetForm();
-    App.renderAll();
+    if(!DataStore.state.riders.some(r => r.id === riderId)) return alert('Select a valid rider.');
+    if(!date || isoDateStr(parseLocalDate(date)) !== date) return alert('Select a valid date.');
+    if(![km,rate,paid,total,pending,amount].every(Number.isFinite) || km < 0 || rate < 0 || (type === 'ride' && paid < 0)) return alert('Enter valid amounts.');
+    if(type !== 'ride' && (amount <= 0 || roundMoney(amount) !== amount || !note)) return alert('Enter a positive amount (maximum 2 decimal places) and a reason.');
+    if(type === 'ride' && km === 0 && paid === 0) return alert('Enter KM or use a money entry.');
+    if(type === 'ride' && paid > total && !confirm('Paid is more than earnings. The negative balance means the rider owes money back. Continue?')) return;
+    const record = {riderId, date, type, km, rate, total, paid, pending, adjustment:values.adjustment, note};
+    const name = riderMap()[riderId];
+    const old = editingId ? DataStore.state.entries.find(e => e.id === editingId) : null;
+    if(editingId && !old) return alert('This entry no longer exists. Reset the form.');
+    saving = true;
+    document.getElementById('entrySaveBtn').disabled = true;
+    try{
+      if(old) Object.assign(old, record, {updatedAt:new Date().toISOString()});
+      else DataStore.state.entries.push({...record, id:DataStore.id('entry'), createdAt:new Date().toISOString()});
+      DataStore.log(`${old ? 'Edited' : 'Added'} ${entryKinds[type]} — ${name} on ${date}; balance change ${money(pending)}; ${note}`);
+      await DataStore.persist();
+      resetForm();
+      App.renderAll();
+    }catch(e){ /* persist reports errors and restores the last saved state; keep the form */ }
+    finally { saving = false; document.getElementById('entrySaveBtn').disabled = false; }
   }
 
   function edit(entryId){
@@ -1221,6 +1280,8 @@ const Entries = (() => {
       const e = DataStore.state.entries.find(x => x.id === entryId);
       if(!e) return;
       editingId = entryId;
+      document.getElementById('entryType').value = e.type || 'ride';
+      document.getElementById('entryAmount').value = Math.abs(e.adjustment || e.paid || 0);
       document.getElementById('entryTitle').textContent = 'Edit Ride Entry';
       document.getElementById('entrySaveBtn').textContent = 'Update Entry';
       document.getElementById('entryDate').value = e.date;
@@ -1251,6 +1312,8 @@ const Entries = (() => {
 
   function resetForm(){
     editingId = null;
+    document.getElementById('entryType').value = 'ride';
+    document.getElementById('entryAmount').value = '';
     document.getElementById('entryTitle').textContent = 'Add Ride Entry';
     document.getElementById('entrySaveBtn').textContent = 'Save Entry';
     document.getElementById('entryKm').value = '';
@@ -1296,14 +1359,14 @@ const Entries = (() => {
           && (!fStatus || status === fStatus);
       });
 
-    renderRows('entryRows', rows, 10, e => {
+    renderRows('entryRows', rows, 11, e => {
       const status = entryStatus(e);
       const riderTotalPending = balance[e.id] ?? 0;
       return `<tr>
         <td>${e.date}</td>
-        <td>${esc(rMap[e.riderId] || 'Unknown')}</td>
+        <td>${esc(rMap[e.riderId] || 'Unknown')}<br><small>${esc(entryKinds[e.type || 'ride'])}${e.adjustment ? ' · '+money(e.adjustment) : ''}</small></td>
         <td class="num">${money(e.km)}</td>
-        <td class="num">${money(e.total)}</td>
+        <td class="num">${money(e.total)}</td><td class="num">${money(e.adjustment)}</td>
         <td class="num">${money(e.paid)}</td>
         <td class="num">${money(e.pending)}</td>
         <td class="num">${money(riderTotalPending)}</td>
@@ -1352,15 +1415,16 @@ const Reports = (() => {
 
   function summarize(entries, keepAllRiders){
     const table = {};
-    DataStore.state.riders.forEach(r => table[r.id] = { id:r.id, name:r.name, km:0, total:0, paid:0, pending:0 });
+    DataStore.state.riders.forEach(r => table[r.id] = { id:r.id, name:r.name, km:0, total:0, paid:0, pending:0, adjustment:0 });
     entries.forEach(e => {
       if(!table[e.riderId]) return;
       const t = table[e.riderId];
+      t.adjustment = roundMoney(t.adjustment + Number(e.adjustment||0));
       t.km += Number(e.km||0); t.total += Number(e.total||0);
-      t.paid += Number(e.paid||0); t.pending += Number(e.pending||0);
+      t.paid = roundMoney(t.paid + Number(e.paid||0)); t.pending = roundMoney(t.pending + Number(e.pending||0));
     });
     const rows = Object.values(table);
-    return keepAllRiders ? rows : rows.filter(r => r.km || r.total || r.paid || r.pending);
+    return keepAllRiders ? rows : rows.filter(r => r.km || r.total || r.paid || r.pending || r.adjustment);
   }
 
   /* Only the riders who actually have an entry in this period.
@@ -1373,16 +1437,16 @@ const Reports = (() => {
   }
 
   function summaryTableHtml(rows, totalPendingMap){
-    if(!rows.length) return `<tr class="empty-row"><td colspan="6">No data.</td></tr>`;
+    if(!rows.length) return `<tr class="empty-row"><td colspan="7">No data.</td></tr>`;
     return rows.map(r => `<tr>
-      <td>${esc(r.name)}</td><td class="num">${money(r.km)}</td><td class="num">${money(r.total)}</td>
+      <td>${esc(r.name)}</td><td class="num">${money(r.km)}</td><td class="num">${money(r.total)}</td><td class="num">${money(r.adjustment)}</td>
       <td class="num">${money(r.paid)}</td><td class="num">${money(r.pending)}</td>
       <td class="num">${money((totalPendingMap && totalPendingMap[r.id]) || 0)}</td>
     </tr>`).join('');
   }
 
   function monthEndDate(monthStr){
-    if(!monthStr) return todayISO(); // "All time" — use today's balance
+    if(!monthStr) return DataStore.state.entries.reduce((day,e) => e.date > day ? e.date : day, todayISO()); // Include all entries for all-time reports
     const [y,m] = monthStr.split('-').map(Number);
     return isoDateStr(new Date(y, m, 0)); // day 0 of next month = last day of this month
   }
@@ -1478,10 +1542,10 @@ const Reports = (() => {
     const pendingDisplay = riderList.length ? balance[riderList[riderList.length - 1].id] : 0;
     document.getElementById('rrPending').textContent = money(pendingDisplay);
 
-    renderRows('riderReportRows', entries, 7, e => `<tr>
+    renderRows('riderReportRows', entries, 8, e => `<tr>
       <td>${e.date}</td>
       <td class="num">${money(e.km)}</td>
-      <td class="num">${money(e.total)}</td>
+      <td class="num">${money(e.total)}</td><td class="num">${money(e.adjustment)}</td>
       <td class="num">${money(e.paid)}</td>
       <td class="num">${money(e.pending)}</td>
       <td class="num">${money(balance[e.id] ?? 0)}</td>
@@ -1512,12 +1576,12 @@ const Reports = (() => {
 
     if(format === 'csv'){
       downloadFile(`daily-fuel-cost-report-${day}${riderSuffix}.csv`, toCsv([
-        ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
+        ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        ...rows.map(r => [r.name, r.km, r.total, r.adjustment, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      const ok = await exportVisual('Daily Fuel Cost Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
+      const ok = await exportVisual('Daily Fuel Cost Report', subtitle, ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        rows.map(r => [r.name, money(r.km), money(r.total), money(r.adjustment), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `daily-fuel-cost-report-${day}${riderSuffix}`, format);
       if(!ok) return;
     }
@@ -1537,12 +1601,12 @@ const Reports = (() => {
 
     if(format === 'csv'){
       downloadFile(`weekly-report-${todayISO()}.csv`, toCsv([
-        ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
+        ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        ...rows.map(r => [r.name, r.km, r.total, r.adjustment, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      const ok = await exportVisual('Weekly Report', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
+      const ok = await exportVisual('Weekly Report', subtitle, ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        rows.map(r => [r.name, money(r.km), money(r.total), money(r.adjustment), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `weekly-report-${todayISO()}`, format);
       if(!ok) return;
     }
@@ -1561,12 +1625,12 @@ const Reports = (() => {
 
     if(format === 'csv'){
       downloadFile(`monthly-report-${month || 'all'}.csv`, toCsv([
-        ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        ...rows.map(r => [r.name, r.km, r.total, r.paid, r.pending, totalPendingMap[r.id]||0])
+        ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        ...rows.map(r => [r.name, r.km, r.total, r.adjustment, r.paid, r.pending, totalPendingMap[r.id]||0])
       ]), 'text/csv;charset=utf-8;');
     } else {
-      const ok = await exportVisual('Monthly Summary', subtitle, ['Rider','KM','Total','Paid','Pending','Total Pending'],
-        rows.map(r => [r.name, money(r.km), money(r.total), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
+      const ok = await exportVisual('Monthly Summary', subtitle, ['Rider','KM','Total','Adjustment','Net Paid','Pending','Total Pending'],
+        rows.map(r => [r.name, money(r.km), money(r.total), money(r.adjustment), money(r.paid), money(r.pending), money(totalPendingMap[r.id]||0)]),
         `monthly-report-${month || 'all'}`, format);
       if(!ok) return;
     }
@@ -1598,8 +1662,8 @@ const Reports = (() => {
 
     if(format === 'csv'){
       const csv = toCsv([
-        ['Date','KM','Total','Paid','Pending','Balance','Status','Note'],
-        ...entries.map(e => [e.date, e.km, e.total, e.paid, e.pending, balance[e.id] ?? 0, entryStatus(e), e.note||''])
+        ['Date','KM','Total','Adjustment','Net Paid','Pending','Balance','Status','Note'],
+        ...entries.map(e => [e.date, e.km, e.total, e.adjustment||0, e.paid, e.pending, balance[e.id] ?? 0, entryStatus(e), e.note||''])
       ]);
       downloadFile(`rider-report-${slug}-${rangeLabel}.csv`, csv, 'text/csv;charset=utf-8;');
     } else {
@@ -1611,8 +1675,8 @@ const Reports = (() => {
         { label:'Pending', value: money(pendingDisplay) }
       ];
       const ok = await exportVisual(`Rider Report — ${name}`, `${rangeSubtitle} · Generated ${formatDateLong(new Date())}`,
-        ['Date','KM','Total','Paid','Pending','Balance','Status','Note'],
-        entries.map(e => [e.date, money(e.km), money(e.total), money(e.paid), money(e.pending), money(balance[e.id] ?? 0), entryStatus(e), e.note||'']),
+        ['Date','KM','Total','Adjustment','Net Paid','Pending','Balance','Status','Note'],
+        entries.map(e => [e.date, money(e.km), money(e.total), money(e.adjustment), money(e.paid), money(e.pending), money(balance[e.id] ?? 0), entryStatus(e), e.note||'']),
         `rider-report-${slug}-${rangeLabel}`, format, statChips);
       if(!ok) return;
     }
@@ -1649,12 +1713,12 @@ const Backup = (() => {
 
   async function exportCSV(){
     const rMap = riderMap();
-    const rows = [['Date','Rider','KM','Rate','Total','Paid','Pending','Status','Note']];
+    const rows = [['Date','Rider','KM','Rate','Total','Adjustment','Net Paid','Pending','Status','Note']];
     [...DataStore.state.entries].sort((a,b) => {
       if(a.date !== b.date) return a.date.localeCompare(b.date);
       return entryTimestamp(a) - entryTimestamp(b);
     }).forEach(e => {
-      rows.push([e.date, rMap[e.riderId]||'Unknown', e.km, e.rate, e.total, e.paid, e.pending, entryStatus(e), e.note||'']);
+      rows.push([e.date, rMap[e.riderId]||'Unknown', e.km, e.rate, e.total, e.adjustment||0, e.paid, e.pending, entryStatus(e), e.note||'']);
     });
     downloadFile(`ledger-report-${todayISO()}.csv`, toCsv(rows), 'text/csv;charset=utf-8;');
     DataStore.log('Exported CSV report');
@@ -1669,9 +1733,7 @@ const Backup = (() => {
     reader.onload = async e => {
       try{
         const imported = JSON.parse(e.target.result);
-        if(!Array.isArray(imported.riders) || !Array.isArray(imported.entries)){
-          alert('Invalid backup file.'); return;
-        }
+        validateBackup(imported);
         if(!confirm('Restoring replaces all current riders and entries. Continue?')) return;
         DataStore.state.riders = imported.riders;
         DataStore.state.entries = imported.entries;
