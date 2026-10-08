@@ -1,352 +1,268 @@
-/* Return Mail Generator — depends on assets/js/common.js (pad, formatDateLong/Short, copyRichHTML) */
+/* Depends on common.js:
+   pad, formatDateLong, formatDateShort, copyRichHTML
+*/
 
 let returnMailHTML = '';
 let returnMailText = '';
 let returnSubject = '';
-
-
-  //  RETURN MAIL
-
+let returnMailReady = false;
 
 const RETURN_TO =
   'return@carrybee.com,centralsort@carrybee.com';
 
-
 const RETURN_CC =
-  'Moulvibazar-Barlekha@carrybee.com,'+
-  'ruhin.shimul@carrybee.com,'+
-  'dipto.d@carrybee.com,'+
-  'transport@carrybee.com,'+
+  'Moulvibazar-Barlekha@carrybee.com,' +
+  'ruhin.shimul@carrybee.com,' +
+  'dipto.d@carrybee.com,' +
+  'transport@carrybee.com,' +
   'bhairab.sub-sort@carrybee.com';
 
+const returnInput = document.getElementById('returnInput');
+const returnDate = document.getElementById('returnDate');
+const returnPreview = document.getElementById('returnPreview');
+const copyOpenReturnBtn = document.getElementById('copyOpenReturnBtn');
 
-function parseReturnData(text){
-
-  const lines =
-    text
-    .split(/\r?\n/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-
-
-  const rows=[];
-
-  let current={};
-
-
-  lines.forEach(line=>{
-
-    const ids =
-      line.match(
-        /\b[A-Z0-9]+\b/g
-      ) || [];
-
-
-    ids.forEach(token=>{
-
-      const t =
-        token.trim();
-
-
-      if(
-        /^R[A-Z0-9]{8,}$/i.test(t) ||
-        /^C[A-Z0-9]{8,}$/i.test(t)
-      ){
-
-        if(
-          current.consignment ||
-          current.basket ||
-          current.run
-        ){
-
-          rows.push(current);
-
-          current={};
-
-        }
-
-
-        current.consignment=t;
-
-      }
-
-
-      else if(
-        /^B[A-Z0-9]{8,}$/i.test(t)
-      ){
-
-        current.basket=t;
-
-      }
-
-
-      else if(
-        /^\d{4,10}$/.test(t)
-      ){
-
-        current.run=t;
-
-      }
-
-    });
-
-  });
-
-
-  if(
-    current.consignment ||
-    current.basket ||
-    current.run
-  ){
-
-    rows.push(current);
-
-  }
-
-
-  return rows;
-
+function escapeReturnHTML(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
 }
 
+function parseReturnData(text) {
+  const rows = [];
+  const consignmentIds = new Set();
+  const basketIds = new Set();
 
-function generateReturnMail(){
+  let current = {};
 
-  const input =
-    document
-    .getElementById(
-      'returnInput'
-    )
-    .value
-    .trim();
-
-
-  if(!input){
-
-    alert(
-      'Paste return data first.'
-    );
-
-    return;
-
+  function saveCurrent() {
+    // Basket or RUN alone must not create a parcel row.
+    if (current.consignment) {
+      rows.push({ ...current });
+    }
+    current = {};
   }
 
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
 
-  const date =
-    document
-    .getElementById(
-      'returnDate'
-    )
-    .value;
+  for (const line of lines) {
+    const tokens = line.toUpperCase().match(/\b[A-Z0-9]+\b/g) || [];
 
+    for (const token of tokens) {
+      // Consignment ID starts with R.
+      if (/^R[A-Z0-9]{8,}$/.test(token)) {
+        saveCurrent();
+        current.consignment = token;
+        consignmentIds.add(token);
+      }
 
-  if(!date){
+      // Basket ID starts with B.
+      else if (/^B[A-Z0-9]{8,}$/.test(token)) {
+        current.basket = token;
+        basketIds.add(token);
+      }
 
-    alert(
-      'Select the mail date.'
-    );
-
-    return;
-
+      else if (/^\d{4,10}$/.test(token)) {
+        current.run = token;
+      }
+    }
   }
 
+  saveCurrent();
 
-  const rows =
-    parseReturnData(
-      input
-    );
+  // Remove exact duplicate rows.
+  const seenRows = new Set();
 
+  const uniqueRows = rows.filter(row => {
+    const key = JSON.stringify([
+      row.consignment,
+      row.basket || '',
+      row.run || ''
+    ]);
 
-  if(!rows.length){
+    if (seenRows.has(key)) {
+      return false;
+    }
 
-    alert(
-      'No valid return parcel ID found.'
-    );
+    seenRows.add(key);
+    return true;
+  });
 
+  return {
+    rows: uniqueRows,
+    consignmentCount: consignmentIds.size,
+    basketCount: basketIds.size
+  };
+}
+
+function resetReturnMail() {
+  returnMailHTML = '';
+  returnMailText = '';
+  returnSubject = '';
+  returnMailReady = false;
+
+  returnPreview.innerHTML =
+    '<span style="color:#98a2b3">Preview will appear here</span>';
+
+  copyOpenReturnBtn.style.display = 'none';
+}
+
+function generateReturnMail() {
+  resetReturnMail();
+
+  const input = returnInput.value.trim();
+  const date = returnDate.value;
+
+  if (!input) {
+    alert('Paste return data first.');
     return;
-
   }
 
+  if (!date) {
+    alert('Select the mail date.');
+    return;
+  }
 
-  const shortDate =
-    formatDateShort(date);
+  const { rows, consignmentCount, basketCount } =
+    parseReturnData(input);
 
+  if (!consignmentCount) {
+    alert('No valid consignment ID found. Consignment IDs must start with R.');
+    return;
+  }
 
-  const longDate =
-    formatDateLong(date);
+  if (!basketCount) {
+    alert('No valid basket ID found. Basket IDs must start with B.');
+    return;
+  }
 
+  const shortDate = formatDateShort(date);
+  const longDate = formatDateLong(date);
+
+  const parcelLabel = consignmentCount === 1 ? 'parcel' : 'parcels';
+  const basketLabel = basketCount === 1 ? 'basket' : 'baskets';
+
+  const transferMessage =
+    `We are transferring ${consignmentCount} return ${parcelLabel} ` +
+    `in ${basketCount} ${basketLabel} from the Moulvibazar-Barlekha Hub ` +
+    `via Linehaul-13.1.`;
 
   returnSubject =
-    `Return Parcels Sending To central Sort from Moulvibazar-Barlekha Hub ${longDate}`;
+    `Return Parcels Sending to Central Sort from ` +
+    `Moulvibazar-Barlekha Hub ${longDate}`;
 
-
-  let tableRows='';
-
-
-  rows.forEach(row=>{
-
-    tableRows += `
-
-      <tr>
-
-        <td style="
-          border:1px solid #d0d0d0;
-          padding:5px 7px;
-        ">
-          ${row.consignment||''}
-        </td>
-
-
-        <td style="
-          border:1px solid #d0d0d0;
-          padding:5px 7px;
-        ">
-          ${row.basket||''}
-        </td>
-
-
-        <td style="
-          border:1px solid #d0d0d0;
-          padding:5px 7px;
-        ">
-          ${row.run||''}
-        </td>
-
-      </tr>
-
-    `;
-
-  });
-
+  const tableRows = rows.map((row, index) => `
+    <tr style="background:${index % 2 ? '#f8f8f8' : '#ffffff'}">
+      <td style="border:1px solid #d0d0d0;padding:5px 7px;">
+        ${escapeReturnHTML(row.consignment)}
+      </td>
+      <td style="border:1px solid #d0d0d0;padding:5px 7px;">
+        ${escapeReturnHTML(row.basket || '')}
+      </td>
+      <td style="border:1px solid #d0d0d0;padding:5px 7px;">
+        ${escapeReturnHTML(row.run || '')}
+      </td>
+    </tr>
+  `).join('');
 
   returnMailHTML = `
+    <div style="
+      font-family:Arial,sans-serif;
+      font-size:13px;
+      color:#111;
+      line-height:1.55;
+    ">
+      <p>Dear Team,</p>
 
-<div style="
-font-family:Arial,sans-serif;
-font-size:13px;
-color:#111;
-line-height:1.55;
-">
+      <p>${escapeReturnHTML(transferMessage)}</p>
 
-<p>Dear Team,</p>
+      <p>
+        Detailed parcel information is provided below for your reference.
+      </p>
 
-<p>
-We are transferring the below-mentioned return parcels in 1 sack from the Moulvibazar-Barlekha Hub via Linehaul-13.1.
-</p>
+      <p>
+        <strong>Total Consignments:</strong> ${consignmentCount}<br>
+        <strong>Total Baskets:</strong> ${basketCount}
+      </p>
 
-<p>
+      <table style="
+        border-collapse:collapse;
+        width:365px;
+        max-width:100%;
+        font-family:Arial,sans-serif;
+        font-size:13px;
+      ">
+        <thead>
+          <tr>
+            <th colspan="3" style="
+              border:1px solid #d0d0d0;
+              padding:7px;
+              background:#eeeeee;
+              text-align:center;
+              font-weight:bold;
+              font-size:14px;
+            ">
+              ${escapeReturnHTML(shortDate)}
+            </th>
+          </tr>
+
+          <tr>
+            ${['Consignment ID', 'Basket ID', 'RUN ID'].map(label => `
+              <th style="
+                border:1px solid #d0d0d0;
+                padding:6px;
+                background:#2563eb;
+                color:white;
+                text-align:center;
+              ">
+                ${label}
+              </th>
+            `).join('')}
+          </tr>
+        </thead>
+
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div style="margin-top:18px;line-height:1.45;">
+        --<br>
+        Best Regards,<br>
+        <strong>Joy Kanto Dey</strong><br>
+        Associate<br>
+        OSD Hub Operation | Moulvibazar-Barlekha Hub<br>
+        <strong style="color:#f97316;">CarryBee Express Ltd.</strong><br>
+        Cell: 01822140807<br>
+        Email: joy.dey@carrybee.com
+      </div>
+    </div>
+  `;
+
+  const textRows = rows.map(row =>
+    `${row.consignment}\t${row.basket || ''}\t${row.run || ''}`
+  ).join('\n');
+
+  returnMailText = `Dear Team,
+
+${transferMessage}
+
 Detailed parcel information is provided below for your reference.
-</p>
 
-
-<table style="
-border-collapse:collapse;
-width:365px;
-font-family:Arial,sans-serif;
-font-size:13px;
-">
-
-<thead>
-
-<tr>
-
-<td colspan="3"
-style="
-border:1px solid #d0d0d0;
-padding:7px;
-background:#eeeeee;
-text-align:center;
-font-weight:bold;
-font-size:14px;
-">
-${shortDate}
-</td>
-
-</tr>
-
-
-<tr>
-
-<th style="
-border:1px solid #d0d0d0;
-padding:6px;
-background:#2563eb;
-color:white;
-text-align:center;
-">
-Consignment ID
-</th>
-
-
-<th style="
-border:1px solid #d0d0d0;
-padding:6px;
-background:#2563eb;
-color:white;
-text-align:center;
-">
-Basket Id
-</th>
-
-
-<th style="
-border:1px solid #d0d0d0;
-padding:6px;
-background:#2563eb;
-color:white;
-text-align:center;
-">
-RUN ID
-</th>
-
-</tr>
-
-</thead>
-
-
-<tbody>
-
-${tableRows}
-
-</tbody>
-
-</table>
-
-
-<p style="margin-top:18px">
---
-</p>
-
-
-</div>
-
-`;
-
-
-  let textRows='';
-
-
-  rows.forEach(row=>{
-
-    textRows +=
-      `${row.consignment||''}\t`+
-      `${row.basket||''}\t`+
-      `${row.run||''}\n`;
-
-  });
-
-
-  returnMailText =
-`Dear Team,
-We are transferring the below-mentioned return parcels in 1 sack from the Moulvibazar-Barlekha Hub via Linehaul-13.1.
-Detailed parcel information is provided below for your reference.
+Total Consignments: ${consignmentCount}
+Total Baskets: ${basketCount}
 
 ${shortDate}
 
-Consignment ID\tBasket Id\tRUN ID
+Consignment ID\tBasket ID\tRUN ID
 ${textRows}
 
 --
-
 Best Regards,
 Joy Kanto Dey
 Associate
@@ -355,182 +271,85 @@ CarryBee Express Ltd.
 Cell: 01822140807
 Email: joy.dey@carrybee.com`;
 
-
-  document.getElementById(
-    'returnPreview'
-  ).innerHTML = `
-
+  returnPreview.innerHTML = `
     <div class="subject-preview">
-
-      <b>Subject:</b>
-      ${returnSubject}
-
-      <br>
-
-      <b>To:</b>
-      ${RETURN_TO}
-
-      <br>
-
-      <b>CC:</b>
-      ${RETURN_CC}
-
+      <b>Subject:</b> ${escapeReturnHTML(returnSubject)}<br>
+      <b>To:</b> ${escapeReturnHTML(RETURN_TO)}<br>
+      <b>CC:</b> ${escapeReturnHTML(RETURN_CC)}
     </div>
 
     ${returnMailHTML}
-
   `;
 
-
-  document.getElementById(
-    'openReturnGmail'
-  ).style.display =
-    'inline-block';
-
-
-  document.getElementById(
-    'copyReturnBtn'
-  ).style.display =
-    'inline-block';
-
+  returnMailReady = true;
+  copyOpenReturnBtn.style.display = 'inline-block';
 }
 
+async function copyAndOpenReturnGmail() {
+  if (!returnMailReady || copyOpenReturnBtn.disabled) {
+    return;
+  }
 
-/* =========================================================
-   RETURN GMAIL
-========================================================= */
+  // Open during the click so awaiting clipboard does not block the popup.
+  const gmailWindow = window.open('about:blank', '_blank');
 
-async function openReturnGmail(){
+  if (gmailWindow) {
+    gmailWindow.opener = null;
+  }
 
-  await copyRichHTML(
+  copyOpenReturnBtn.disabled = true;
 
-    returnMailHTML,
-
-    returnMailText,
-
-    document.getElementById(
-      'copyReturnBtn'
-    )
-
-  );
-
-
-  const url =
-    'https://mail.google.com/mail/u/0/?view=cm' +
-    '&fs=1' +
-
-    '&to='+
-    encodeURIComponent(
-      RETURN_TO
-    ) +
-
-    '&cc='+
-    encodeURIComponent(
-      RETURN_CC
-    ) +
-
-    '&su='+
-    encodeURIComponent(
-      returnSubject
+  try {
+    const copied = await copyRichHTML(
+      returnMailHTML,
+      returnMailText,
+      copyOpenReturnBtn
     );
 
+    if (copied === false) {
+      throw new Error('Clipboard copy failed.');
+    }
 
-  window.open(
-    url,
-    '_blank'
-  );
+    const url =
+      'https://mail.google.com/mail/u/0/?view=cm&fs=1' +
+      '&to=' + encodeURIComponent(RETURN_TO) +
+      '&cc=' + encodeURIComponent(RETURN_CC) +
+      '&su=' + encodeURIComponent(returnSubject);
 
+    if (gmailWindow && !gmailWindow.closed) {
+      gmailWindow.location.href = url;
+    } else {
+      window.location.href = url;
+    }
+  } catch (error) {
+    if (gmailWindow && !gmailWindow.closed) {
+      gmailWindow.close();
+    }
+
+    console.error('Could not copy return mail:', error);
+    alert('Could not copy the mail. Please allow clipboard access and try again.');
+  } finally {
+    copyOpenReturnBtn.disabled = false;
+    copyOpenReturnBtn.textContent = 'Copy & Open Gmail';
+  }
 }
 
-/* =========================================================
-   RETURN EVENTS
-========================================================= */
-
-const returnDate =
-  document.getElementById(
-    'returnDate'
-  );
-
-
-const now =
-  new Date();
-
+const now = new Date();
 
 returnDate.value =
-  `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
+document.getElementById('generateReturnBtn')
+  .addEventListener('click', generateReturnMail);
 
-document
-.getElementById(
-  'generateReturnBtn'
-)
-.addEventListener(
-  'click',
-  generateReturnMail
-);
+document.getElementById('clearReturnBtn')
+  .addEventListener('click', () => {
+    returnInput.value = '';
+    resetReturnMail();
+  });
 
+copyOpenReturnBtn.addEventListener('click', copyAndOpenReturnGmail);
 
-document
-.getElementById(
-  'clearReturnBtn'
-)
-.addEventListener(
-  'click',
-  ()=>{
-
-    document.getElementById(
-      'returnInput'
-    ).value='';
-
-
-    document.getElementById(
-      'returnPreview'
-    ).innerHTML =
-      '<span style="color:#98a2b3">Preview will appear here</span>';
-
-
-    document.getElementById(
-      'openReturnGmail'
-    ).style.display='none';
-
-
-    document.getElementById(
-      'copyReturnBtn'
-    ).style.display='none';
-
-  }
-);
-
-
-document
-.getElementById(
-  'openReturnGmail'
-)
-.addEventListener(
-  'click',
-  openReturnGmail
-);
-
-
-document
-.getElementById(
-  'copyReturnBtn'
-)
-.addEventListener(
-  'click',
-  ()=>{
-
-    copyRichHTML(
-
-      returnMailHTML,
-
-      returnMailText,
-
-      document.getElementById(
-        'copyReturnBtn'
-      )
-
-    );
-
-  }
-);
+// Hide outdated mail when input or date changes.
+returnInput.addEventListener('input', resetReturnMail);
+returnDate.addEventListener('input', resetReturnMail);
