@@ -1,0 +1,33 @@
+.pickup-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.pickup-table {
+  border-collapse: collapse;
+  width: 365px;
+  max-width: 100%;
+  margin-top: 14px;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+}
+
+.pickup-table td,
+.pickup-table th {
+  border: 1px solid #d0d0d0;
+  padding: 5px 7px;
+}
+
+.pickup-table td {
+  text-align: left;
+}
+
+.pickup-table th {
+  text-align: center;
+}
+
+.pickup-table tbody tr:nth-child(even) {
+  background: #f8f8f8;
+}
