@@ -1,150 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Return Mail Generator</title>
-<link rel="stylesheet" href="../../assets/css/base.css">
-<link rel="stylesheet" href="../../assets/css/mail-shared.css">
-<link rel="stylesheet" href="return-mail.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Return Mail Generator</title>
+
+  <link rel="stylesheet" href="../../assets/css/base.css">
+  <link rel="stylesheet" href="../../assets/css/mail-shared.css">
+  <link rel="stylesheet" href="return-mail.css">
 </head>
+
 <body>
-<div class="page-content">
+  <div class="page-content">
 
-  <div class="page-head">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Return Mail</h1>
 
-    <div>
-
-      <h1 class="page-title">
-        Return Mail
-      </h1>
-
-      <p class="page-sub">
-        Generate return parcel transfer mail
-      </p>
-
+        <p class="page-sub">
+          Generate return parcel transfer mail
+        </p>
+      </div>
     </div>
 
-  </div>
+    <div class="mail-layout">
 
+      <!-- INPUT PANEL -->
+      <div class="card mail-form">
+        <div class="form-title">Return Data</div>
 
-  <div class="mail-layout">
+        <div class="form-group">
+          <label class="form-label" for="returnDate">
+            Mail Date
+          </label>
 
-
-    <!-- INPUT -->
-
-    <div class="card mail-form">
-
-      <div class="form-title">
-        Return Data
-      </div>
-
-
-      <div class="form-group">
-
-        <label class="form-label">
-          Mail Date
-        </label>
-
-        <input
-          type="date"
-          class="form-input"
-          id="returnDate"
-        >
-
-      </div>
-
-
-      <div class="form-group">
-
-        <label class="form-label">
-          Return Data
-        </label>
-
-        <textarea
-          class="form-textarea"
-          id="returnInput"
-          placeholder="Paste your return data here..."
-        ></textarea>
-
-      </div>
-
-
-      <div class="form-actions">
-
-        <button
-          class="btn btn-primary"
-          id="generateReturnBtn"
-        >
-          Generate Mail
-        </button>
-
-        <button
-          class="btn btn-light"
-          id="clearReturnBtn"
-        >
-          Clear
-        </button>
-
-      </div>
-
-    </div>
-
-
-    <!-- PREVIEW -->
-
-    <div class="card mail-preview">
-
-      <div class="preview-top">
-
-        <div class="preview-title">
-          Mail Preview
+          <input
+            type="date"
+            class="form-input"
+            id="returnDate"
+            required
+          >
         </div>
 
-        <div class="preview-badge">
-          Gmail Ready
+        <div class="form-group">
+          <label class="form-label" for="returnInput">
+            Return Data
+          </label>
+
+          <textarea
+            class="form-textarea"
+            id="returnInput"
+            placeholder="Paste your return data here..."
+            aria-describedby="returnDataHint"
+            spellcheck="false"
+          ></textarea>
+
+          <p
+            id="returnDataHint"
+            style="margin:8px 0 0;font-size:12px;color:#667085;line-height:1.5;"
+          >
+            Consignment IDs start with R. Basket IDs start with B.
+            Paste data in this order: Consignment ID, Basket ID, RUN ID.
+            Repeated IDs are counted only once.
+          </p>
         </div>
 
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="generateReturnBtn"
+          >
+            Generate Mail
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-light"
+            id="clearReturnBtn"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
+      <!-- MAIL PREVIEW -->
+      <div class="card mail-preview">
+        <div class="preview-top">
+          <div class="preview-title">Mail Preview</div>
 
-      <div
-        class="email-paper"
-        id="returnPreview"
-      >
-        <span style="color:#98a2b3">
-          Preview will appear here
-        </span>
-      </div>
+          <div class="preview-badge">Gmail Ready</div>
+        </div>
 
-
-      <div class="form-actions">
-
-        <button
-          class="btn btn-primary"
-          id="openReturnGmail"
-          style="display:none"
+        <div
+          class="email-paper"
+          id="returnPreview"
+          aria-live="polite"
         >
-          Open Gmail
-        </button>
+          <span style="color:#98a2b3;">
+            Preview will appear here
+          </span>
+        </div>
 
-        <button
-          class="btn btn-light"
-          id="copyReturnBtn"
-          style="display:none"
-        >
-          Copy Mail
-        </button>
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="copyOpenReturnBtn"
+            style="display:none;"
+          >
+            Copy &amp; Open Gmail
+          </button>
+        </div>
 
+        <p style="margin:10px 0 0;font-size:12px;color:#667085;line-height:1.5;">
+          Click Copy &amp; Open Gmail, then paste the copied mail
+          into the Gmail message body using Ctrl + V.
+        </p>
       </div>
 
     </div>
-
   </div>
 
-
-</div>
-<script src="../../assets/js/common.js"></script>
-<script src="return-mail.js"></script>
+  <script src="../../assets/js/common.js"></script>
+  <script src="return-mail.js"></script>
 </body>
 </html>
