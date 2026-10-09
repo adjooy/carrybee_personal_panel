@@ -1,7 +1,143 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8"><!doctype html>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Pickup Mail</title>
+
+  <link rel="stylesheet" href="../../assets/css/base.css">
+  <link rel="stylesheet" href="../../assets/css/mail-shared.css">
+  <link rel="stylesheet" href="pickup-mail.css">
+</head>
+
+<body>
+  <div class="page-content">
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Pickup Mail</h1>
+        <p class="page-sub">
+          Generate merchant pickup parcel transfer mail
+        </p>
+      </div>
+    </div>
+
+    <div class="mail-layout">
+
+      <!-- INPUT -->
+      <div class="card mail-form">
+        <div class="form-title">Pickup Data</div>
+
+        <!-- Recipients used by pickup-mail.js -->
+        <input
+          type="hidden"
+          id="pickupTo"
+          value="bhairab.sub-sort@carrybee.com"
+        >
+
+        <input
+          type="hidden"
+          id="pickupCc"
+          value="Moulvibazar-Barlekha@carrybee.com,ruhin.shimul@carrybee.com,dipto.d@carrybee.com,transport@carrybee.com"
+        >
+
+        <div class="form-group">
+          <label class="form-label" for="pickupDate">
+            Mail Date
+          </label>
+
+          <input
+            type="date"
+            class="form-input"
+            id="pickupDate"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pickupInput">
+            Pickup Data
+          </label>
+
+          <textarea
+            class="form-textarea"
+            id="pickupInput"
+            placeholder="Paste your pickup data here..."
+            aria-describedby="pickupDataHint"
+            spellcheck="false"
+          ></textarea>
+
+          <p class="pickup-hint" id="pickupDataHint">
+            Consignment IDs start with E or F. Basket IDs start with B.
+            Paste data in this order: Consignment ID, Basket ID, RUN ID.
+            Repeated IDs are counted only once.
+            Each unique Basket ID counts as one sack.
+          </p>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="generatePickupBtn"
+          >
+            Generate Mail
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-light"
+            id="clearPickupBtn"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="card mail-preview">
+        <div class="preview-top">
+          <div class="preview-title">Mail Preview</div>
+          <div class="preview-badge">Gmail Ready</div>
+        </div>
+
+        <div
+          class="email-paper"
+          id="pickupPreview"
+          aria-live="polite"
+        >
+          <span style="color:#98a2b3;">
+            Preview will appear here
+          </span>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="copyOpenPickupBtn"
+            style="display:none;"
+          >
+            Copy &amp; Open Gmail
+          </button>
+        </div>
+
+        <p class="pickup-hint preview-hint">
+          Click Copy &amp; Open Gmail, then paste the copied mail
+          into the Gmail message body using Ctrl + V.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="pickup-mail.js"></script>
+</body>
+</html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Merchant Pickup Mail Generator</title>
