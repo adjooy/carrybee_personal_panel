@@ -28,7 +28,7 @@ function extractCIDs(){
 
   const matches =
     input.match(
-           /\b[FRC](?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)[A-Z0-9]{10}\b/gi
+           /\b[FRCE](?=[A-Z0-9]{10}\b)(?=[A-Z0-9]*\d)[A-Z0-9]{10}\b/gi
     ) || [];
 
 
