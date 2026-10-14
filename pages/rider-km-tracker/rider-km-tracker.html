@@ -250,6 +250,12 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:14px; line-height:1;
   }
   .modal-close:hover{color:var(--ink); border-color:var(--ink);}
+
+  .daily-rider-picker{border:1px solid var(--steel-line);border-radius:9px;background:var(--paper-raised);}
+  .daily-rider-picker summary{padding:10px 12px;cursor:pointer;font-size:14px;}
+  .daily-rider-options{max-height:190px;overflow:auto;padding:0 10px 10px;}
+  .daily-rider-option{display:flex;align-items:center;gap:9px;padding:8px 4px;margin:0;text-transform:none;letter-spacing:normal;color:var(--ink);cursor:pointer;}
+  .daily-rider-option input{width:16px;height:16px;padding:0;flex:none;accent-color:var(--amber);}
 </style>
 </head>
 <body>
@@ -340,7 +346,18 @@
     </div>
     <div class="row2">
       <div class="field"><label for="reportDay">Date</label><input id="reportDay" type="date" onchange="Reports.render()" /></div>
-      <div class="field"><label for="dailyRiderSelect">Rider</label><select id="dailyRiderSelect" onchange="Reports.render()"><option value="">All Riders</option></select></div>
+      <div class="field">
+        <label>Riders</label>
+        <details class="daily-rider-picker">
+          <summary id="dailyRiderSummary">All Riders</summary>
+          <div class="btn-row" style="padding:10px;">
+            <button type="button" class="btn-sm btn-outline" onclick="Reports.selectDailyRiders(true)">Select All</button>
+            <button type="button" class="btn-sm btn-outline" onclick="Reports.selectDailyRiders(false)">Clear</button>
+          </div>
+          <div id="dailyRiderOptions" class="daily-rider-options"></div>
+        </details>
+        <div class="note-muted">Tick any riders to include in the report.</div>
+      </div>
     </div>
     <div class="btn-row" style="margin-bottom:14px;">
       <button class="btn-sm btn-amber" onclick="Reports.exportDaily('csv')">CSV</button>
@@ -1446,6 +1463,61 @@ const Dashboard = {
 };
 
 const Reports = (() => {
+  // null means all riders, including riders added later; empty Set means none.
+  let dailyRiderSelection = null;
+
+  function dailyRiderMatches(id){
+    return dailyRiderSelection === null || dailyRiderSelection.has(id);
+  }
+
+  function dailySelectionNames(){
+    return DataStore.state.riders.filter(r => dailyRiderMatches(r.id)).map(r => r.name);
+  }
+
+  function selectDailyRiders(all){
+    dailyRiderSelection = all ? null : new Set();
+    render();
+  }
+
+  function toggleDailyRider(id, checked){
+    if(dailyRiderSelection === null){
+      dailyRiderSelection = new Set(DataStore.state.riders.map(r => r.id));
+    }
+    if(checked) dailyRiderSelection.add(id);
+    else dailyRiderSelection.delete(id);
+    render();
+  }
+
+  function populateDailyRiders(){
+    const riders = DataStore.state.riders;
+    if(dailyRiderSelection !== null){
+      const valid = new Set(riders.map(r => r.id));
+      dailyRiderSelection = new Set([...dailyRiderSelection].filter(id => valid.has(id)));
+    }
+    const container = document.getElementById('dailyRiderOptions');
+    const focusedId = container.contains(document.activeElement) ? document.activeElement.dataset.riderId : null;
+    container.replaceChildren();
+    riders.forEach(r => {
+      const label = document.createElement('label');
+      label.className = 'daily-rider-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.riderId = r.id;
+      checkbox.checked = dailyRiderMatches(r.id);
+      checkbox.addEventListener('change', () => toggleDailyRider(r.id, checkbox.checked));
+      label.append(checkbox, document.createTextNode(r.name));
+      container.append(label);
+      if(focusedId === r.id) checkbox.focus();
+    });
+    if(!riders.length) container.textContent = 'No riders yet';
+    const names = dailySelectionNames();
+    document.getElementById('dailyRiderSummary').textContent =
+      !riders.length ? 'No riders yet' :
+      dailyRiderSelection === null ? 'All Riders' :
+      names.length === 0 ? 'No riders selected' :
+      names.length === 1 ? names[0] : names.length + ' riders selected';
+  }
+
   function startOfWeek(d){
     const date = new Date(d);
     const day = date.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
@@ -1502,15 +1574,13 @@ const Reports = (() => {
     document.getElementById('weeklyRows').innerHTML = summaryTableHtml(summarizeActive(weekly), riderPendingAsOf(isoDateStr(weekEnd)));
 
     const day = document.getElementById('reportDay').value || todayISO();
-    const dailyRiderId = document.getElementById('dailyRiderSelect').value;
     const daily = DataStore.state.entries
       .filter(e => e.date === day)
-      .filter(e => !dailyRiderId || e.riderId === dailyRiderId);
+      .filter(e => dailyRiderMatches(e.riderId));
     // Only riders who actually worked on this date — riders with no entry
     // for the day are no longer listed as empty 0.00 rows. Same rule the
     // CSV/PDF/JPG export uses, so screen and file always agree.
     let dailyRows = summarizeActive(daily);
-    if(dailyRiderId) dailyRows = dailyRows.filter(r => r.id === dailyRiderId);
     document.getElementById('dailyRows').innerHTML = summaryTableHtml(dailyRows, riderPendingAsOf(day));
 
     const month = document.getElementById('reportMonth').value;
@@ -1525,11 +1595,7 @@ const Reports = (() => {
       || '<option value="">No riders yet</option>';
     if(current && DataStore.state.riders.some(r => r.id === current)) sel.value = current;
 
-    const dailySel = document.getElementById('dailyRiderSelect');
-    const dailyCurrent = dailySel.value;
-    dailySel.innerHTML = '<option value="">All Riders</option>' +
-      DataStore.state.riders.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('');
-    if(dailyCurrent && DataStore.state.riders.some(r => r.id === dailyCurrent)) dailySel.value = dailyCurrent;
+    populateDailyRiders();
   }
 
   function riderReportEntries(){
@@ -1605,16 +1671,16 @@ const Reports = (() => {
 
   async function exportDaily(format){
     const day = document.getElementById('reportDay').value || todayISO();
-    const dailyRiderId = document.getElementById('dailyRiderSelect').value;
     const daily = DataStore.state.entries
       .filter(e => e.date === day)
-      .filter(e => !dailyRiderId || e.riderId === dailyRiderId);
-    if(!daily.length) return alert('No entries found for this date' + (dailyRiderId ? ' for this rider.' : '.'));
+      .filter(e => dailyRiderMatches(e.riderId));
+    if(!daily.length) return alert('No entries found for this date and selected riders.');
     let rows = summarizeActive(daily);
-    if(dailyRiderId) rows = rows.filter(r => r.id === dailyRiderId);
     const totalPendingMap = riderPendingAsOf(day);
-    const riderSuffix = dailyRiderId ? '-' + (riderMap()[dailyRiderId]||'rider').trim().toLowerCase().replace(/\s+/g,'-') : '';
-    const subtitle = `Date: ${formatDateLong(parseLocalDate(day))}` + (dailyRiderId ? ` · ${riderMap()[dailyRiderId]||''}` : '');
+    const names = dailySelectionNames();
+    const riderSuffix = dailyRiderSelection === null ? '' : '-selected-riders';
+    const subtitle = `Date: ${formatDateLong(parseLocalDate(day))}` +
+      (dailyRiderSelection === null ? ' · All Riders' : ' · ' + names.join(', '));
 
     if(format === 'csv'){
       downloadFile(`daily-fuel-cost-report-${day}${riderSuffix}.csv`, toCsv([
@@ -1727,7 +1793,7 @@ const Reports = (() => {
     auditRows();
   }
 
-  return { render, populateRiderSelect, renderRiderReport, setRiderReportRange, openRiderReport, exportDaily, exportWeekly, exportMonthly, exportRiderReport };
+  return { selectDailyRiders, toggleDailyRider, render, populateRiderSelect, renderRiderReport, setRiderReportRange, openRiderReport, exportDaily, exportWeekly, exportMonthly, exportRiderReport };
 })();
 
 /* ============================================================
