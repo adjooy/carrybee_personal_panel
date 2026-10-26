@@ -20,7 +20,8 @@ const RETURN_CC =
 const returnInput = document.getElementById('returnInput');
 const returnDate = document.getElementById('returnDate');
 const returnPreview = document.getElementById('returnPreview');
-const copyOpenReturnBtn = document.getElementById('copyOpenReturnBtn');
+const copyReturnBtn = document.getElementById('copyReturnBtn');
+const openReturnBtn = document.getElementById('openReturnBtn');
 
 function escapeReturnHTML(value) {
   return String(value).replace(/[&<>"']/g, character => ({
@@ -44,6 +45,7 @@ function parseReturnData(text) {
     if (current.consignment) {
       rows.push({ ...current });
     }
+
     current = {};
   }
 
@@ -111,7 +113,8 @@ function resetReturnMail() {
   returnPreview.innerHTML =
     '<span style="color:#98a2b3">Preview will appear here</span>';
 
-  copyOpenReturnBtn.style.display = 'none';
+  copyReturnBtn.style.display = 'none';
+  openReturnBtn.style.display = 'none';
 }
 
 function generateReturnMail() {
@@ -134,7 +137,9 @@ function generateReturnMail() {
     parseReturnData(input);
 
   if (!consignmentCount) {
-    alert('No valid consignment ID found. Consignment IDs must start with R.');
+    alert(
+      'No valid consignment ID found. Consignment IDs must start with R.'
+    );
     return;
   }
 
@@ -231,16 +236,7 @@ function generateReturnMail() {
         <tbody>${tableRows}</tbody>
       </table>
 
-      <div style="margin-top:18px;line-height:1.45;">
-        --<br>
-        Best Regards,<br>
-        <strong>Joy Kanto Dey</strong><br>
-        Associate<br>
-        OSD Hub Operation | Moulvibazar-Barlekha Hub<br>
-        <strong style="color:#f97316;">CarryBee Express Ltd.</strong><br>
-        Cell: 01822140807<br>
-        Email: joy.dey@carrybee.com
-      </div>
+      <p><br></p>
     </div>
   `;
 
@@ -262,14 +258,7 @@ ${shortDate}
 Consignment ID\tBasket ID\tRUN ID
 ${textRows}
 
---
-Best Regards,
-Joy Kanto Dey
-Associate
-OSD Hub Operation | Moulvibazar-Barlekha Hub
-CarryBee Express Ltd.
-Cell: 01822140807
-Email: joy.dey@carrybee.com`;
+`;
 
   returnPreview.innerHTML = `
     <div class="subject-preview">
@@ -282,55 +271,58 @@ Email: joy.dey@carrybee.com`;
   `;
 
   returnMailReady = true;
-  copyOpenReturnBtn.style.display = 'inline-block';
+
+  copyReturnBtn.style.display = 'inline-block';
+  openReturnBtn.style.display = 'inline-block';
 }
 
-async function copyAndOpenReturnGmail() {
-  if (!returnMailReady || copyOpenReturnBtn.disabled) {
+async function copyReturnMail() {
+  if (!returnMailReady || copyReturnBtn.disabled) {
     return;
   }
 
-  // Open during the click so awaiting clipboard does not block the popup.
-  const gmailWindow = window.open('about:blank', '_blank');
-
-  if (gmailWindow) {
-    gmailWindow.opener = null;
-  }
-
-  copyOpenReturnBtn.disabled = true;
+  copyReturnBtn.disabled = true;
 
   try {
     const copied = await copyRichHTML(
       returnMailHTML,
       returnMailText,
-      copyOpenReturnBtn
+      copyReturnBtn
     );
 
     if (copied === false) {
       throw new Error('Clipboard copy failed.');
     }
-
-    const url =
-      'https://mail.google.com/mail/u/0/?view=cm&fs=1' +
-      '&to=' + encodeURIComponent(RETURN_TO) +
-      '&cc=' + encodeURIComponent(RETURN_CC) +
-      '&su=' + encodeURIComponent(returnSubject);
-
-    if (gmailWindow && !gmailWindow.closed) {
-      gmailWindow.location.href = url;
-    } else {
-      window.location.href = url;
-    }
   } catch (error) {
-    if (gmailWindow && !gmailWindow.closed) {
-      gmailWindow.close();
-    }
-
     console.error('Could not copy return mail:', error);
-    alert('Could not copy the mail. Please allow clipboard access and try again.');
+
+    alert(
+      'Could not copy the mail. Please allow clipboard access and try again.'
+    );
   } finally {
-    copyOpenReturnBtn.disabled = false;
-    copyOpenReturnBtn.textContent = 'Copy & Open Gmail';
+    copyReturnBtn.disabled = false;
+    copyReturnBtn.textContent = 'Copy Mail';
+  }
+}
+
+function openReturnGmail() {
+  if (!returnMailReady) {
+    return;
+  }
+
+  const url =
+    'https://mail.google.com/mail/u/0/?view=cm&fs=1' +
+    '&to=' + encodeURIComponent(RETURN_TO) +
+    '&cc=' + encodeURIComponent(RETURN_CC) +
+    '&su=' + encodeURIComponent(returnSubject);
+
+  const gmailWindow = window.open('about:blank', '_blank');
+
+  if (gmailWindow) {
+    gmailWindow.opener = null;
+    gmailWindow.location.href = url;
+  } else {
+    window.location.href = url;
   }
 }
 
@@ -348,8 +340,14 @@ document.getElementById('clearReturnBtn')
     resetReturnMail();
   });
 
-copyOpenReturnBtn.addEventListener('click', copyAndOpenReturnGmail);
+copyReturnBtn.addEventListener('click', copyReturnMail);
+openReturnBtn.addEventListener('click', openReturnGmail);
 
 // Hide outdated mail when input or date changes.
 returnInput.addEventListener('input', resetReturnMail);
 returnDate.addEventListener('input', resetReturnMail);
+
+// Initial state.
+copyReturnBtn.textContent = 'Copy Mail';
+openReturnBtn.textContent = 'Open Mail';
+resetReturnMail();
