@@ -89,7 +89,6 @@
       <div class="card mail-preview">
         <div class="preview-top">
           <div class="preview-title">Mail Preview</div>
-
           <div class="preview-badge">Gmail Ready</div>
         </div>
 
@@ -103,20 +102,32 @@
           </span>
         </div>
 
-        <div class="form-actions">
+        <div
+          class="form-actions"
+          style="display:flex;flex-wrap:wrap;gap:10px;"
+        >
           <button
             type="button"
             class="btn btn-primary"
-            id="copyOpenReturnBtn"
+            id="copyReturnBtn"
             style="display:none;"
           >
-            Copy &amp; Open Gmail
+            Copy Mail
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-light"
+            id="openReturnBtn"
+            style="display:none;"
+          >
+            Open Mail
           </button>
         </div>
 
         <p style="margin:10px 0 0;font-size:12px;color:#667085;line-height:1.5;">
-          Click Copy &amp; Open Gmail, then paste the copied mail
-          into the Gmail message body using Ctrl + V.
+          Click Copy Mail, then Open Mail. In Gmail, click above
+          your automatic signature and press Ctrl + V to paste the mail.
         </p>
       </div>
 
