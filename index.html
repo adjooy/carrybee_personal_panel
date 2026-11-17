@@ -1,123 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Parcel Panel</title>
-<link rel="stylesheet" href="../../assets/css/base.css">
-<link rel="stylesheet" href="parcel-panel.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rider Parcel Count</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#172338;--muted:#69778b;--border:#e3e9f2;--accent:#2563eb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1100px;margin:auto;padding:28px 18px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}h1{margin:0;font-size:25px}p{margin:5px 0;color:var(--muted)}button,.choose{border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font:inherit;font-weight:650;background:var(--accent);color:#fff}button.secondary{background:#e9eef6;color:#23344f}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 16px #23344f08}.upload{padding:18px;margin-bottom:18px}.drop{border:2px dashed #c8d5e7;border-radius:12px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.drop.drag{background:#eff6ff;border-color:var(--accent)}.file{font-size:12px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}input[type=file]{display:none}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{padding:18px}.stat b{display:block;font-size:29px}.stat span{color:var(--muted);font-size:12px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.toolbar input{padding:11px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;width:min(100%,320px)}.table-card{overflow:hidden}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--border)}th{background:#f8faff;color:#53647c;font-size:12px}td:last-child,th:last-child{text-align:right}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#f8faff}.count{display:inline-block;background:#eaf2ff;color:#1d4ed8;border-radius:9px;padding:6px 12px;font-weight:800}.empty{padding:40px 18px;text-align:center;color:var(--muted)}.error{color:#b91c1c;background:#fff1f2;padding:12px;border-radius:10px;margin-bottom:14px}.hidden{display:none!important}@media(max-width:600px){.wrap{padding:18px 12px}h1{font-size:21px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats .stat:last-child{grid-column:1/-1}.stat b{font-size:24px}.drop{padding:18px}.choose{width:100%;text-align:center}.toolbar input{width:100%}th,td{padding:12px}}
+</style>
 </head>
-<body>
-<div class="page-content">
-
-  <div class="page-head">
-
-    <div>
-      <h1 class="page-title">Parcel Panel</h1>
-      <p class="page-sub">DA-wise parcel breakdown</p>
-    </div>
-
-    <div class="top-actions">
-
-      <button
-        class="btn btn-danger"
-        id="resetBtn"
-        style="display:none"
-      >
-        Reset
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <div class="card upload-card" id="uploadCard">
-
-    <div class="upload-zone" id="dropzone">
-
-      <div class="upload-left">
-
-        <div class="upload-icon">
-          ⇪
-        </div>
-
-        <div>
-
-          <div class="upload-title">
-            Select Consignment CSV
-          </div>
-
-          <div class="upload-file" id="fname">
-            No file selected
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <label class="btn btn-primary" for="fileInput">
-        Choose CSV
-      </label>
-
-      <input
-        type="file"
-        id="fileInput"
-        accept=".csv,text/csv"
-      >
-
-    </div>
-
-  </div>
-
-
-  <div class="status" id="status"></div>
-
-
-  <div class="summary" id="summary"></div>
-
-
-  <div class="toolbar" id="toolbar">
-
-    <div class="toolbar-info" id="daCount"></div>
-
-    <div class="toolbar-actions">
-
-      <input
-        type="date"
-        class="sheet-date-input"
-        id="sheetDate"
-        title="Sheet tab date (e.g. Aug 18)"
-      >
-
-      <button class="btn btn-primary" id="uploadSheetBtn">
-        Upload to Sheet
-      </button>
-
-      <button class="btn btn-light" id="copyAllBtn">
-        Copy All
-      </button>
-
-    </div>
-
-  </div>
-
-
-  <div class="upload-msg" id="uploadMsg" style="display:none"></div>
-
-
-  <div id="cards"></div>
-
-
-  <div class="card empty" id="emptyState">
-    Select a CSV file to view the parcel breakdown.
-  </div>
-
-
-</div>
-<script src="../../assets/js/common.js"></script>
-<script src="parcel-panel.js"></script>
-</body>
-</html>
+<body><main class="wrap">
+<header><div><h1>Parcel Panel</h1><p>Rider-wise parcel count</p></div><button id="reset" class="secondary hidden">Reset</button></header>
+<section class="card upload"><div class="drop" id="drop"><div><strong>Upload Consignment CSV</strong><div class="file" id="filename">Choose a CSV file or drag it here</div></div><label class="choose" for="file">Choose CSV</label><input id="file" type="file" accept=".csv,text/csv"></div></section>
+<div id="error" class="error hidden" role="alert"></div>
+<section id="results" class="hidden"><div class="stats"><div class="card stat"><b id="total">0</b><span>Total Parcels</span></div><div class="card stat"><b id="riders">0</b><span>Total Riders</span></div><div class="card stat"><b id="unassigned">0</b><span>Unassigned Parcels</span></div></div><div class="toolbar"><input id="search" placeholder="Search rider name or employee ID" aria-label="Search rider"><button id="copy" class="secondary">Copy Rider Counts</button></div><div class="card table-card"><div class="scroll"><table><thead><tr><th>#</th><th>Rider / DA Name</th><th>Employee ID</th><th>Parcel Count</th></tr></thead><tbody id="rows"></tbody></table></div><div id="noMatch" class="empty hidden">No matching rider found.</div></div></section>
+<div id="initial" class="card empty">Select a CSV file to view rider-wise parcel counts.</div>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);let groups=[];
+function parseCSV(text){text=text.replace(/^\uFEFF/,'');const out=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))out.push(row);row=[];cell=''}else cell+=c}if(quoted)throw Error('CSV contains an unclosed quoted field.');row.push(cell);if(row.some(v=>v.trim()))out.push(row);return out}
+function cell(row,i){return i<0?'':String(row[i]??'').trim()}
+function error(msg){$('error').textContent=msg;$('error').classList.remove('hidden')}
+function show(){const q=$('search').value.trim().toLowerCase();const visible=groups.filter(g=>g.name.toLowerCase().includes(q)||g.emp.toLowerCase().includes(q));$('rows').replaceChildren();visible.forEach((g,i)=>{const tr=document.createElement('tr');[String(i+1),g.name,g.emp||'—'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});const td=document.createElement('td'),b=document.createElement('span');b.className='count';b.textContent=g.count;td.append(b);tr.append(td);$('rows').append(tr)});$('noMatch').classList.toggle('hidden',visible.length!==0)}
+async function load(file){if(!file)return;$('error').classList.add('hidden');try{const matrix=parseCSV(await file.text());if(matrix.length<2)throw Error('CSV file has no parcel records.');const header=matrix[0].map(x=>x.trim().toLowerCase().replace(/\s+/g,' '));const idx=names=>header.findIndex(h=>names.includes(h));const id=idx(['consignment id','consignment id.','consignment_id','consignmentid']);const name=idx(['da name','da_name','rider name','rider','delivery agent name']);const emp=idx(['da employee id','da_employee_id','employee id','rider id']);if(id<0||name<0)throw Error('CSV must contain "Consignment Id" and "DA Name" columns.');const map=new Map();const unique=new Set();let unassigned=0;for(const row of matrix.slice(1)){const cid=cell(row,id);if(!cid||unique.has(cid))continue;unique.add(cid);const rider=cell(row,name)||'Unassigned';const eid=cell(row,emp);if(rider==='Unassigned')unassigned++;const key=(eid?`id:${eid.toLowerCase()}`:`name:${rider.toLowerCase().replace(/\s+/g,' ')}`);if(!map.has(key))map.set(key,{name:rider,emp:eid,count:0});map.get(key).count++}if(!unique.size)throw Error('No valid Consignment Id found.');groups=[...map.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));$('total').textContent=unique.size;$('riders').textContent=groups.filter(g=>g.name!=='Unassigned').length;$('unassigned').textContent=unassigned;$('filename').textContent=file.name;$('results').classList.remove('hidden');$('initial').classList.add('hidden');$('reset').classList.remove('hidden');$('search').value='';show()}catch(e){error(e.message)}}
+$('file').addEventListener('change',e=>load(e.target.files[0]));const drop=$('drop');['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.addEventListener('drop',e=>load(e.dataTransfer.files[0]));$('search').addEventListener('input',show);$('reset').addEventListener('click',()=>{groups=[];$('file').value='';$('filename').textContent='Choose a CSV file or drag it here';$('results').classList.add('hidden');$('initial').classList.remove('hidden');$('reset').classList.add('hidden');$('error').classList.add('hidden')});$('copy').addEventListener('click',async()=>{const text=['Rider\tEmployee ID\tParcel Count',...groups.map(g=>[g.name,g.emp,g.count].join('\t'))].join('\n');try{await navigator.clipboard.writeText(text);$('copy').textContent='Copied!';setTimeout(()=>$('copy').textContent='Copy Rider Counts',1500)}catch(e){error('Copy failed. Please use a secure browser context (HTTPS or localhost).')}});
+</script></body></html>
