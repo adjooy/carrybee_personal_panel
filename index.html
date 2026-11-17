@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcel Panel</title>
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="parcel-panel.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<div class="page-content">
+
+  <div class="page-head">
+
+    <div>
+      <h1 class="page-title">Parcel Panel</h1>
+      <p class="page-sub">DA-wise parcel breakdown</p>
+    </div>
+
+    <div class="top-actions">
+
+      <button
+        class="btn btn-danger"
+        id="resetBtn"
+        style="display:none"
+      >
+        Reset
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="card upload-card" id="uploadCard">
+
+    <div class="upload-zone" id="dropzone">
+
+      <div class="upload-left">
+
+        <div class="upload-icon">
+          ⇪
+        </div>
+
+        <div>
+
+          <div class="upload-title">
+            Select Consignment CSV
+          </div>
+
+          <div class="upload-file" id="fname">
+            No file selected
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <label class="btn btn-primary" for="fileInput">
+        Choose CSV
+      </label>
+
+      <input
+        type="file"
+        id="fileInput"
+        accept=".csv,text/csv"
+      >
+
+    </div>
+
+  </div>
+
+
+  <div class="status" id="status"></div>
+
+
+  <div class="summary" id="summary"></div>
+
+
+  <div class="toolbar" id="toolbar">
+
+    <div class="toolbar-info" id="daCount"></div>
+
+    <div class="toolbar-actions">
+
+      <input
+        type="date"
+        class="sheet-date-input"
+        id="sheetDate"
+        title="Sheet tab date (e.g. Aug 18)"
+      >
+
+      <button class="btn btn-primary" id="uploadSheetBtn">
+        Upload to Sheet
+      </button>
+
+      <button class="btn btn-light" id="copyAllBtn">
+        Copy All
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="upload-msg" id="uploadMsg" style="display:none"></div>
+
+
+  <div id="cards"></div>
+
+
+  <div class="card empty" id="emptyState">
+    Select a CSV file to view the parcel breakdown.
+  </div>
+
+
+</div>
+<script src="../../assets/js/common.js"></script>
+<script src="parcel-panel.js"></script>
+</body>
+</html>
